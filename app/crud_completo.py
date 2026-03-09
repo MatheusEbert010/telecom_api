@@ -48,3 +48,20 @@ def update_user(db: Session, user_id: int, user_data: schemas.UserCreate):
     db.refresh(user)
 
     return user
+
+def create_plan(db: Session, plan: schemas.PlanCreate):
+    db_plan = models.Plan(
+        name=plan.name,
+        price=plan.price,
+        speed=plan.speed
+    )
+
+    db.add(db_plan)
+    db.commit()
+    db.refresh(db_plan)
+
+    return db_plan
+
+
+def get_plans(db: Session):
+    return db.query(models.Plan).all()
