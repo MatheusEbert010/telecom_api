@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from .telecom_db import Base
 
-
+###DEFINIÇÃO DOS MODELOS ORM PARA USUÁRIOS E PLANOS, INCLUINDO RELACIONAMENTO ENTRE USUÁRIOS E PLANOS
 class User(Base):
     __tablename__ = "users"
 
@@ -13,12 +13,11 @@ class User(Base):
     phone = Column(String(20))
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    
     plan_id = Column(Integer, ForeignKey("plans.id"))
     
     plan = relationship("Plan", back_populates="users")
 
-
+###DEFINIÇÃO DO MODELO ORM PARA PLANOS, INCLUINDO RELACIONAMENTO COM USUÁRIOS
 class Plan(Base):
     __tablename__ = "plans"
 

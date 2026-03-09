@@ -1,4 +1,4 @@
-# Telecom API
+### Telecom API
 🚀🗼🛜
 
 API REST desenvolvida para simular o gerenciamento completo de um sistema para empresas de telecomunicações.
@@ -24,35 +24,35 @@ Esta API permite cadastrar usuários, gerenciar planos de internet e associar cl
 ## Arquitetura do Projeto
 
 ```
-telecom_api
-│
-|── app
-│   |── routers
-│   │   |── users.py
-|   |   |── plans.py
-│   │
-│   |── crud_completo.py
-│   |── models.py
-│   |── schemas.py
-│   |── telecom_db.py
-│   |── main.py
-│
-|── venv
-|── requirements.txt
-|── README.md
+app
+│── routers
+│   |── users.py
+|   |── plans.py
+│ 
+|── services
+│   |──user_service.py
+|
+|── crud
+|   |──user_repository.py
+|
+│── models.py
+|── schemas.py
+|── telecom_db.py
+│── main.py
+
 ```
 
 ### Responsabilidade dos módulos
 
-| Arquivo          | Responsabilidade                |
-| ---------------- | ------------------------------- |
-| main.py          | Inicialização da API            |
-| telecom_db.py    | Conexão com o banco de dados    |
-| models.py        | Definição das tabelas           |
-| schemas.py       | Validação de dados com Pydantic |
-| crud_completo.py | Operações de banco de dados     |
-| routers/users.py | Rotas da API                    |
-| routers/plans.py | Planos disponíveis              |
+| Arquivo            | Responsabilidade                |
+| ----------------   | ------------------------------- |
+| main.py            | Inicialização da API            |
+| telecom_db.py      | Conexão com o banco de dados    |
+| models.py          | Definição das tabelas           |
+| schemas.py         | Validação de dados com Pydantic |
+| crud/repository.py | Operações de banco de dados     |
+| services.py        | Regras de negócio da aplicação  |
+| routers.py         | Definição dos endpoints da API  |
 
 ---
 
@@ -100,72 +100,6 @@ Body:
 
 ---
 
-## Como executar o projeto
-
-### 1 Clonar o repositório
-
-```
-git clone https://github.com/seuusuario/telecom_api.git
-```
-
-### 2 Entrar na pasta
-
-```
-cd telecom_api
-```
-
-### 3 Criar ambiente virtual
-
-```
-python -m venv venv
-```
-
-### 4 Ativar ambiente virtual
-
-Windows:
-
-```
-venv\Scripts\activate
-```
-
-Linux / Mac:
-
-```
-source venv/bin/activate
-```
-
-### 5 Instalar dependências
-
-```
-pip install -r requirements.txt
-```
-
-### 6 Rodar API
-
-```
-uvicorn app.main:app --reload
-```
-
----
-
-## Documentação automática
-
-Após iniciar o servidor, acesse:
-
-Swagger UI
-
-```
-http://127.0.0.1:8000/docs
-```
-
-Redoc
-
-```
-http://127.0.0.1:8000/redoc
-```
-
----
-
 # Sistema de Planos de Internet
 
 Foi implementado um sistema de **Planos de Internet** permitindo que diferentes usuários possam estar associados a um plano.
@@ -186,27 +120,23 @@ Foi criado um relacionamento **1:N (um plano pode ter vários usuários)**.
 Estrutura:
 
 ```
-
 Plan 1 ----- N Users
-
 ```
 
 Um usuário pode ter apenas um plano ativo.
 
 ---
 
+
 # Endpoints de Planos
 
 Criar plano:
 
 ```
-
 POST /plans
-
 ```
 
 Exemplo de payload:
-
 ```json
 {
   "name": "Fibra 500MB",
@@ -218,26 +148,53 @@ Exemplo de payload:
 Listar planos:
 
 ```
-
 GET /plans
-
 ```
+
+# Contratação de planos pelos usuários
+
+Foi implementada a funcionalidade que permite que um usuário **contrate um plano de internet** diretamente pela API.
+Essa feature adiciona uma regra de negócio real, onde o sistema **valida a existência do usuário e do plano** antes de realizar a associação entre eles.
 
 ---
 
-# Documentação da API
+# Endpoint
 
-A documentação interativa é gerada automaticamente pelo **Swagger**.
+Contratar um plano
 
-Após rodar o projeto, acesse:
+---
+
+POST /users/{user_id}/subscribe
+
+---
+
+Body:
+
+```json
+{
+  "plan_id": 1
+}
+
+# Fluxo da operação
+
+- Verifica se o usuário existe no banco.
+- Verifica se o plano existe.
+- Associa o plano ao usuário.
+- Salva a alteração no banco de dados.
+
+---
+
+## Documentação da API
+
+- A documentação interativa é gerada automaticamente pelo **Swagger**.
+
+- Após rodar o projeto, acesse:
 
 ```
 
 http://127.0.0.1:8000/docs
 
 ```
-
----
 
 # Como Rodar o Projeto
 
@@ -297,7 +254,6 @@ O projeto continuará evoluindo com novas funcionalidades típicas de sistemas b
 
 Roadmap:
 
-- Contratação de planos pelos usuários
 - Paginação de usuários
 - Filtro de usuários por email
 - Autenticação com JWT
@@ -328,22 +284,3 @@ www.linkedin.com/in/matheus-ebert
 
 GitHub:  
 https://github.com/MatheusEbert010
-```
-
----
-
-* Relacionamento entre usuários e planos
-* Paginação de resultados
-* Filtros de busca
-* Dockerização da aplicação
-* Autenticação JWT
-
----
-
-## Autor
-
-Matheus De Souza Ebert
-
-Backend Engineer | Data Engineering
-
-Python • SQL • APIs • ETL • Data Pipelines
