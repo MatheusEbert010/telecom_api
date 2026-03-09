@@ -1,20 +1,23 @@
 # Telecom API
 🚀🗼🛜
 
-API REST desenvolvida para simular o gerenciamento de usuários em um sistema de telecomunicações.
+API REST desenvolvida para simular o gerenciamento completo de um sistema para empresas de telecomunicações.
 
-O projeto foi construído utilizando **FastAPI**, **SQLAlchemy** e **MySQL**, com arquitetura modular baseada em boas práticas de desenvolvimento backend.
+O projeto foi construído utilizando a linguagem **Python** **FastAPI**, **SQLAlchemy** e **MySQL**, com arquitetura modular baseada em boas práticas de desenvolvimento backend.
+Esta API permite cadastrar usuários, gerenciar planos de internet e associar clientes aos planos disponíveis.
+
 
 ---
 
 ## Tecnologias Utilizadas
 
-* Python 3.10+
-* FastAPI
-* SQLAlchemy
-* MySQL
-* Uvicorn
-* Pydantic
+- Python
+- FastAPI
+- SQLAlchemy
+- MySQL
+- Uvicorn
+- Pydantic
+- Swagger (documentação automática)
 
 ---
 
@@ -26,6 +29,7 @@ telecom_api
 |── app
 │   |── routers
 │   │   |── users.py
+|   |   |── plans.py
 │   │
 │   |── crud_completo.py
 │   |── models.py
@@ -35,6 +39,7 @@ telecom_api
 │
 |── venv
 |── requirements.txt
+|── README.md
 ```
 
 ### Responsabilidade dos módulos
@@ -47,6 +52,7 @@ telecom_api
 | schemas.py       | Validação de dados com Pydantic |
 | crud_completo.py | Operações de banco de dados     |
 | routers/users.py | Rotas da API                    |
+| routers/plans.py | Planos disponíveis              |
 
 ---
 
@@ -160,9 +166,172 @@ http://127.0.0.1:8000/redoc
 
 ---
 
-## Próximas melhorias
+# Sistema de Planos de Internet
 
-* Sistema de planos de internet
+Foi implementado um sistema de **Planos de Internet** permitindo que diferentes usuários possam estar associados a um plano.
+
+Cada plano possui:
+
+- id
+- name
+- price
+- speed (Mbps)
+
+---
+
+# Relacionamento entre Usuário e Plano
+
+Foi criado um relacionamento **1:N (um plano pode ter vários usuários)**.
+
+Estrutura:
+
+```
+
+Plan 1 ----- N Users
+
+```
+
+Um usuário pode ter apenas um plano ativo.
+
+---
+
+# Endpoints de Planos
+
+Criar plano:
+
+```
+
+POST /plans
+
+```
+
+Exemplo de payload:
+
+```json
+{
+  "name": "Fibra 500MB",
+  "price": 99,
+  "speed": 500
+}
+```
+
+Listar planos:
+
+```
+
+GET /plans
+
+```
+
+---
+
+# Documentação da API
+
+A documentação interativa é gerada automaticamente pelo **Swagger**.
+
+Após rodar o projeto, acesse:
+
+```
+
+http://127.0.0.1:8000/docs
+
+```
+
+---
+
+# Como Rodar o Projeto
+
+## 1 Clonar o repositório
+
+```bash
+git clone https://github.com/MatheusEbert010/telecom_api.git
+```
+
+## 2 Entrar na pasta
+
+```bash
+cd telecom_api
+```
+
+## 3 Criar ambiente virtual
+
+```bash
+python -m venv venv
+```
+
+## 4 Ativar ambiente
+
+Windows
+
+```bash
+venv\Scripts\activate
+```
+
+Linux / Mac
+
+```bash
+source venv/bin/activate
+```
+
+---
+
+## 5 Instalar dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 6 Rodar a API
+
+```bash
+uvicorn app.main:app --reload
+```
+
+---
+
+# Próximas Implementações
+
+O projeto continuará evoluindo com novas funcionalidades típicas de sistemas backend profissionais.
+
+Roadmap:
+
+- Contratação de planos pelos usuários
+- Paginação de usuários
+- Filtro de usuários por email
+- Autenticação com JWT
+- Dockerização da API
+- Deploy em ambiente cloud
+- Testes automatizados
+
+---
+
+# Objetivo do Projeto
+
+Este projeto foi desenvolvido com o objetivo de:
+
+- praticar desenvolvimento backend com FastAPI
+- aplicar conceitos de APIs REST
+- trabalhar com ORM utilizando SQLAlchemy
+- estruturar projetos backend de forma escalável
+- construir um portfólio sólido para vagas de backend
+
+---
+
+# Autor
+
+Matheus Ebert
+
+LinkedIn:  
+www.linkedin.com/in/matheus-ebert
+
+GitHub:  
+https://github.com/MatheusEbert010
+```
+
+---
+
 * Relacionamento entre usuários e planos
 * Paginação de resultados
 * Filtros de busca
