@@ -70,13 +70,14 @@ CRUD completo de usuários:
 
 ## Endpoints
 
-| Método | Endpoint    | Descrição         |
-| ------ | ----------- | ----------------- |
-| POST   | /users      | Criar usuário     |
-| GET    | /users      | Listar usuários   |
-| GET    | /users/{id} | Buscar usuário    |
-| PUT    | /users/{id} | Atualizar usuário |
-| DELETE | /users/{id} | Remover usuário   |
+| Método | Endpoint              | Descrição         |
+| ------ | --------------------- | ----------------- |
+| POST   | /users                | Criar usuário     |
+| POST   | /users/{id}/subscribe | Assinar plano     |
+| GET    | /users                | Listar usuários   |
+| GET    | /users/{id}           | Buscar usuário    |
+| PUT    | /users/{id}           | Atualizar usuário |
+| DELETE | /users/{id}           | Remover usuário   |
 
 ---
 
@@ -174,6 +175,9 @@ Body:
 {
   "plan_id": 1
 }
+```
+
+---
 
 # Fluxo da operação
 
@@ -277,7 +281,7 @@ Este projeto foi desenvolvido com o objetivo de:
 
 # Autor
 
-Matheus Ebert
+Matheus de Souza Ebert
 
 LinkedIn:  
 www.linkedin.com/in/matheus-ebert
