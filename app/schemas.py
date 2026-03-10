@@ -16,7 +16,7 @@ class PlanCreate(BaseModel):
 class PlanResponse(PlanCreate):
     id: int
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 ###SCHEMA PARA INSCRIÇÃO DE USUÁRIO EM UM PLANO        
 class SubscribePlan(BaseModel):

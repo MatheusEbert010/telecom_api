@@ -1,7 +1,5 @@
-from .. import models, schemas, user_repository, plan_repository
+from .. import models
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
-from datetime import datetime
 
 ###ACESSO AO BANCO DE DADOS PARA USUÁRIOS, INCLUINDO INSCRIÇÃO EM PLANOS
 def get_user(db: Session, user_id: int):
@@ -13,3 +11,10 @@ def update_user_plan(db: Session, user: models.User, plan_id: int):
     db.commit()
     db.refresh(user)
     return user
+
+###USUÁRIOS PAGINADOS, COM LIMITAÇÃO DE REGISTROS POR PÁGINA E DESLOCAMENTO PARA NAVEGAÇÃO ENTRE AS PÁGINAS
+def get_users_paginated(db, page: int = 1, limit: int = 10):
+
+    offset = (page - 1) * limit
+
+    return db.query(models.User).offset(offset).limit(limit).all()
