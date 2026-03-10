@@ -30,10 +30,12 @@ app
 |   |── plans.py
 │ 
 |── services
-│   |──user_service.py
+│   |── user_service.py
 |
 |── crud
-|   |──user_repository.py
+|   |── user_repository.py
+|   |── plan_repository.py
+|   |── crud_completo
 |
 │── models.py
 |── schemas.py
