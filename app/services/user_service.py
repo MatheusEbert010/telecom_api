@@ -29,7 +29,7 @@ def subscribe_plan(db: Session, user_id: int, plan_id: int):
     }
 
 ###FUNÇÃO PARA LISTAR USUÁRIOS DE FORMA PAGINADA, COM VALIDAÇÃO DE PARÂMETROS DE PAGINAÇÃO
-def list_users_paginated(db: Session, page: int = 1, limit: int = 10):
+def list_users_paginated(db, page: int = 1, limit: int = 10, email: str = None):
 
     if page < 1:
         page = 1
@@ -37,7 +37,7 @@ def list_users_paginated(db: Session, page: int = 1, limit: int = 10):
     if limit > 100:
         limit = 100
 
-    users, total = user_repository.get_users_paginated(db, page, limit)
+    users, total = user_repository.get_users_paginated(db, page, limit, email)
 
     return {
         "page": page,

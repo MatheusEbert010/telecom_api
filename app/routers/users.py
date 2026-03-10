@@ -26,10 +26,11 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 def get_users(
     page: int = 1,
     limit: int = 10,
+    email: str = None,
     db: Session = Depends(get_db)
 ):
 
-    return user_service.list_users_paginated(db, page, limit)
+    return user_service.list_users_paginated(db, page, limit, email)
 
 ###ROTAS PARA GERENCIAR USUÁRIOS POR ID
 @router.get("/{user_id}")

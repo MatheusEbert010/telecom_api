@@ -222,6 +222,26 @@ GET /users?page=1&limit=10
 }
 ```
 
+# Filtro de usuários por email
+
+A API permite buscar usuários utilizando o email como parâmetro de consulta.
+
+Exemplo: 
+
+---
+
+GET /users?email=matheus@email.com
+
+---
+
+Esse filtro também pode ser combinado com paginação:
+
+---
+
+GET /users?page=1&limit=10&email=matheus@email.com
+
+---
+
 ## Documentação da API
 
 - A documentação interativa é gerada automaticamente pelo **Swagger**.
@@ -292,8 +312,6 @@ O projeto continuará evoluindo com novas funcionalidades típicas de sistemas b
 
 Roadmap:
 
-- Paginação de usuários
-- Filtro de usuários por email
 - Autenticação com JWT
 - Dockerização da API
 - Deploy em ambiente cloud
