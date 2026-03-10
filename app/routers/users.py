@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..crud import crud_completo
+from ..schemas import UserCreate
 from ..services import user_service
 from .. import schemas
 from ..telecom_db import SessionLocal
@@ -18,15 +19,15 @@ def get_db():
 
 ###ROTAS PARA GERENCIAR USUÁRIOS
 @router.post("/")
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    return crud_completo.create_user(db, user)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    return user_service.create_user(db, user)
 
 ###LISTAR USUÁRIOS DE FORMA PAGINADA, COM VALIDAÇÃO DE PARÂMETROS DE PAGINAÇÃO
 @router.get("/")
 def get_users(
     page: int = 1,
     limit: int = 10,
-    email: str = None,
+    email: str | None = None,
     db: Session = Depends(get_db)
 ):
 

@@ -1,19 +1,42 @@
-from .. import models
 from sqlalchemy.orm import Session
+from .. import models
 
-###ACESSO AO BANCO DE DADOS PARA USUÁRIOS, INCLUINDO INSCRIÇÃO EM PLANOS
-def get_user(db: Session, user_id: int):
+
+### BUSCAR USUÁRIO POR ID
+def get_user_by_id(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
-###ATUALIZA O PLANO DO USUÁRIO
+
+### BUSCAR USUÁRIO POR EMAIL
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
+### CRIAR USUÁRIO
+def create_user(db: Session, user_data: dict):
+
+    db_user = models.User(**user_data)
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
+
+
+### ATUALIZAR PLANO DO USUÁRIO
 def update_user_plan(db: Session, user: models.User, plan_id: int):
+
     user.plan_id = plan_id
+
     db.commit()
     db.refresh(user)
+
     return user
 
-###USUÁRIOS PAGINADOS, COM LIMITAÇÃO DE REGISTROS POR PÁGINA E DESLOCAMENTO PARA NAVEGAÇÃO ENTRE AS PÁGINAS
-def get_users_paginated(db: Session, page: int = 1, limit: int = 10, email: str = None):
+
+### LISTAR USUÁRIOS COM PAGINAÇÃO
+def get_users_paginated(db: Session, page: int = 1, limit: int = 10, email: str | None = None):
 
     offset = (page - 1) * limit
 
@@ -22,8 +45,8 @@ def get_users_paginated(db: Session, page: int = 1, limit: int = 10, email: str 
     if email:
         query = query.filter(models.User.email == email)
 
-    users = query.offset(offset).limit(limit).all()
-
     total = query.count()
+
+    users = query.offset(offset).limit(limit).all()
 
     return users, total

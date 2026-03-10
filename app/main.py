@@ -3,6 +3,7 @@ from .routers import users
 from .telecom_db import engine
 from .routers import plans
 from . import models
+from .routers import auth
 
 ####CRIAÇÃO DAS TABELAS NO BANCO DE DADOS
 models.Base.metadata.create_all(bind=engine)
@@ -13,3 +14,4 @@ app = FastAPI()
 ####ROTA PARA GERENCIAR USUÁRIOS, INCLUINDO INSCRIÇÃO EM PLANOS
 app.include_router(users.router)
 app.include_router(plans.router)
+app.include_router(auth.router)

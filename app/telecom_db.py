@@ -15,3 +15,11 @@ SessionLocal = sessionmaker(
 
 ###BASE PARA MODELOS ORM
 Base = declarative_base()
+
+###DEPENDÊNCIA PARA OBTER A SESSÃO DO BANCO DE DADOS, GARANTINDO QUE A SESSÃO SEJA FECHADA APÓS O USO
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

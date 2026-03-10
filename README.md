@@ -6,7 +6,6 @@ API REST desenvolvida para simular o gerenciamento completo de um sistema para e
 O projeto foi construído utilizando a linguagem **Python** **FastAPI**, **SQLAlchemy** e **MySQL**, com arquitetura modular baseada em boas práticas de desenvolvimento backend.
 Esta API permite cadastrar usuários, gerenciar planos de internet e associar clientes aos planos disponíveis.
 
-
 ---
 
 ## Tecnologias Utilizadas
@@ -18,6 +17,10 @@ Esta API permite cadastrar usuários, gerenciar planos de internet e associar cl
 - Uvicorn
 - Pydantic
 - Swagger (documentação automática)
+- JWT (autenticação)
+- Passlib / Bcrypt (criptografia de senha)
+
+As bibliotecas envolvidas são **FastAPI, SQLAlchemy, Passlib, bcrypt** e **python-jose**.
 
 ---
 
@@ -28,6 +31,7 @@ app
 │── routers
 │   |── users.py
 |   |── plans.py
+|   |── auth.py
 │ 
 |── services
 │   |── user_service.py
@@ -37,7 +41,8 @@ app
 |   |── plan_repository.py
 |   |── crud_completo
 |
-│── models.py
+│── security.py
+|── models.py
 |── schemas.py
 |── telecom_db.py
 │── main.py
@@ -46,15 +51,17 @@ app
 
 ### Responsabilidade dos módulos
 
-| Arquivo            | Responsabilidade                |
-| ----------------   | ------------------------------- |
-| main.py            | Inicialização da API            |
-| telecom_db.py      | Conexão com o banco de dados    |
-| models.py          | Definição das tabelas           |
-| schemas.py         | Validação de dados com Pydantic |
-| crud/repository.py | Operações de banco de dados     |
-| services.py        | Regras de negócio da aplicação  |
-| routers.py         | Definição dos endpoints da API  |
+| Arquivo            | Responsabilidade                            |
+| ----------------   | ------------------------------------------  |
+| main.py            | Inicialização da API                        |
+| telecom_db.py      | Conexão com o banco de dados                |
+| models.py          | Definição das tabelas                       |
+| schemas.py         | Validação de dados com Pydantic             |
+| crud/repository.py | Operações de banco de dados                 |
+| services.py        | Regras de negócio da aplicação              |
+| routers.py         | Definição dos endpoints da API              |
+| security.py        | Criptografia de senha e geração de token JWT|
+| auth.py            | Autenticação de usuários                    |
 
 ---
 
@@ -72,14 +79,15 @@ CRUD completo de usuários:
 
 ## Endpoints
 
-| Método | Endpoint              | Descrição         |
-| ------ | --------------------- | ----------------- |
-| POST   | /users                | Criar usuário     |
-| POST   | /users/{id}/subscribe | Assinar plano     |
-| GET    | /users                | Listar usuários   |
-| GET    | /users/{id}           | Buscar usuário    |
-| PUT    | /users/{id}           | Atualizar usuário |
-| DELETE | /users/{id}           | Remover usuário   |
+| Método | Endpoint              | Descrição                |
+| ------ | --------------------- | -----------------        |
+| POST   | /users                | Criar usuário            |
+| POST   | /users/{id}/subscribe | Assinar plano            |
+| GET    | /users                | Listar usuários          |
+| GET    | /users/{id}           | Buscar usuário           |
+| PUT    | /users/{id}           | Atualizar usuário        |
+| DELETE | /users/{id}           | Remover usuário          |
+| POST   | /auth/login           | Autenticação do usuário  |
 
 ---
 
@@ -242,6 +250,36 @@ GET /users?page=1&limit=10&email=matheus@email.com
 
 ---
 
+# Login
+
+Endpoint:
+
+--- 
+
+POST /auth/login
+
+---
+
+- Body
+
+```json
+{
+ "email": "matheus@email.com",
+ "password": "123456"
+}
+```
+
+Resposta
+
+```json
+
+{
+ "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+ "token_type": "bearer"
+}
+
+```
+
 ## Documentação da API
 
 - A documentação interativa é gerada automaticamente pelo **Swagger**.
@@ -312,7 +350,8 @@ O projeto continuará evoluindo com novas funcionalidades típicas de sistemas b
 
 Roadmap:
 
-- Autenticação com JWT
+- Proteção de rotas com JWT
+- Middleware de autenticação
 - Dockerização da API
 - Deploy em ambiente cloud
 - Testes automatizados
