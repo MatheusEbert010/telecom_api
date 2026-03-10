@@ -190,6 +190,38 @@ Body:
 
 ---
 
+---
+
+# Paginação de usuários
+
+- Esse padrão permite:
+- Paginação real
+- Frontend saber total de registros
+- Criar navegação entre páginas
+- Escalar para milhares de registros
+
+---
+
+GET /users?page=1&limit=10
+
+---
+
+```json
+{
+  "page": 1,
+  "limit": 5,
+  "total": 18,
+  "data": [
+    {
+      "id": 1,
+      "name": "Matheus",
+      "email": "matheus@email.com",
+      "phone": "33999999999"
+    }
+  ]
+}
+```
+
 ## Documentação da API
 
 - A documentação interativa é gerada automaticamente pelo **Swagger**.

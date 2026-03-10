@@ -13,8 +13,12 @@ def update_user_plan(db: Session, user: models.User, plan_id: int):
     return user
 
 ###USUÁRIOS PAGINADOS, COM LIMITAÇÃO DE REGISTROS POR PÁGINA E DESLOCAMENTO PARA NAVEGAÇÃO ENTRE AS PÁGINAS
-def get_users_paginated(db, page: int = 1, limit: int = 10):
+def get_users_paginated(db: Session, page: int = 1, limit: int = 10):
 
     offset = (page - 1) * limit
 
-    return db.query(models.User).offset(offset).limit(limit).all()
+    users = db.query(models.User).offset(offset).limit(limit).all()
+
+    total = db.query(models.User).count()
+
+    return users, total

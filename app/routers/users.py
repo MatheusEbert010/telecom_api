@@ -28,6 +28,7 @@ def get_users(
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
+
     return user_service.list_users_paginated(db, page, limit)
 
 ###ROTAS PARA GERENCIAR USUÁRIOS POR ID
