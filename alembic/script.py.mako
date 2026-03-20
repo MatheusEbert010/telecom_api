@@ -5,6 +5,8 @@ Revises: ${down_revision | comma,n}
 Create Date: ${create_date}
 
 """
+
+# Template base usado pelo Alembic para gerar novas migrations.
 from typing import Sequence, Union
 
 from alembic import op
@@ -19,10 +21,10 @@ depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
+    """Aplica a alteracao de schema gerada para esta revisao."""
     ${upgrades if upgrades else "pass"}
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Desfaz a alteracao de schema gerada para esta revisao."""
     ${downgrades if downgrades else "pass"}

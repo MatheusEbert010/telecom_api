@@ -48,6 +48,8 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.pytest_tmp/
+.test_tmp/
 
 # Translations
 *.mo
@@ -156,8 +158,6 @@ logs/
 
 # Local development
 .postman/
-test_*.py
-*_test.py
 
 # Production
 .env.prod

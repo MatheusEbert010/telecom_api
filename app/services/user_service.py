@@ -1,61 +1,113 @@
-from ..crud import user_repository, plan_repository
+"""Regras de negocio relacionadas ao ciclo de vida dos usuarios."""
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from ..security import hash_password
+
+from .. import schemas
 from ..cache import cache
-import json
+from ..crud import plan_repository, user_repository
+from ..security import hash_password
 
 
-### CRIAÇÃO DE USUÁRIO COM HASH DE SENHA
-def create_user(db: Session, user):
+def _hash_password(password: str) -> str:
+    """Converte o hash de senha para string antes de persistir no banco."""
+    hashed_password = hash_password(password)
+    return hashed_password.decode("utf-8") if isinstance(hashed_password, bytes) else hashed_password
 
-    # limita tamanho da senha para evitar erro do bcrypt
-    password = user.password[:72]
 
-    # verifica se email já existe
+def create_user(db: Session, user: schemas.UserCreate):
+    """Cria um usuario comum com email unico e senha protegida por hash."""
     existing_user = user_repository.get_user_by_email(db, user.email)
-
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
+        raise HTTPException(status_code=400, detail="Email ja cadastrado")
 
     user_data = {
         "name": user.name,
         "email": user.email,
         "phone": user.phone,
-        "password": hash_password(password),
-        "role": user.role
+        "password": _hash_password(user.password),
+        "role": schemas.UserRole.USER.value,
     }
 
     created_user = user_repository.create_user(db, user_data)
-
-    # Invalidar cache de usuários
     cache.clear_pattern("users:list:*")
-
     return created_user
 
 
-### REGRA DE ASSINATURA DE PLANO
-def subscribe_plan(db: Session, user_id: int, plan_id: int):
-
-    # verifica se usuário existe
+def update_user(db: Session, user_id: int, user_data: schemas.UserUpdate):
+    """Atualiza dados do usuario sem permitir elevacao implicita de privilegio."""
     user = user_repository.get_user_by_id(db, user_id)
-
     if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
 
-    # verifica se plano existe
+    existing_user = user_repository.get_user_by_email(db, user_data.email)
+    if existing_user and existing_user.id != user_id:
+        raise HTTPException(status_code=400, detail="Email ja cadastrado")
+
+    user.name = user_data.name
+    user.email = user_data.email
+    user.phone = user_data.phone
+
+    if user_data.password:
+        user.password = _hash_password(user_data.password)
+
+    db.commit()
+    db.refresh(user)
+    cache.clear_pattern("users:list:*")
+    return user
+
+
+def change_user_role(db: Session, user_id: int, role: schemas.UserRole):
+    """Troca explicitamente o papel de um usuario existente."""
+    user = user_repository.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
+    user.role = role.value
+    db.commit()
+    db.refresh(user)
+    cache.clear_pattern("users:list:*")
+    return user
+
+
+def get_user_by_id(db: Session, user_id: int):
+    """Encapsula a leitura de um usuario por id."""
+    return user_repository.get_user_by_id(db, user_id)
+
+
+def delete_user(db: Session, user_id: int):
+    """Remove um usuario e invalida caches dependentes."""
+    user = user_repository.get_user_by_id(db, user_id)
+    if not user:
+        return None
+
+    deleted_user = user_repository.delete_user(db, user)
+    cache.clear_pattern("users:list:*")
+    return deleted_user
+
+
+def subscribe_plan(db: Session, user_id: int, plan_id: int):
+    """Vincula um usuario a um plano existente."""
+    user = user_repository.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
     plan = plan_repository.get_plan_by_id(db, plan_id)
-
     if not plan:
-        raise HTTPException(status_code=404, detail="Plano não encontrado")
+        raise HTTPException(status_code=404, detail="Plano nao encontrado")
 
-    # atualiza plano do usuário usando repository
-    return user_repository.update_user_plan(db, user, plan_id)
+    updated_user = user_repository.update_user_plan(db, user, plan_id)
+    cache.clear_pattern("users:list:*")
+    return updated_user
 
 
-### LISTAGEM PAGINADA DE USUÁRIOS
-def list_users_paginated(db: Session, page: int = 1, limit: int = 10, email: str = None):
-
+def list_users_paginated(
+    db: Session,
+    page: int = 1,
+    limit: int = 10,
+    email: str | None = None,
+):
+    """Mantem uma listagem simples de usuarios para compatibilidade."""
     if page < 1:
         page = 1
 
@@ -63,72 +115,54 @@ def list_users_paginated(db: Session, page: int = 1, limit: int = 10, email: str
         limit = 100
 
     users, total = user_repository.get_users_paginated(db, page, limit, email)
-
-    return {
-        "page": page,
-        "limit": limit,
-        "total": total,
-        "data": users
-    }
+    return {"page": page, "limit": limit, "total": total, "data": users}
 
 
-### LISTAGEM AVANÇADA DE USUÁRIOS COM FILTROS E BUSCA
 def list_users_advanced(
     db: Session,
     page: int = 1,
     limit: int = 10,
-    search: str = None,
-    role: str = None,
+    search: str | None = None,
+    role: str | None = None,
     sort_by: str = "created_at",
-    sort_order: str = "desc"
+    sort_order: str = "desc",
 ):
-    # Criar chave de cache baseada nos parâmetros
+    """Lista usuarios com busca, filtros, ordenacao e cache de leitura."""
     cache_key = f"users:list:{page}:{limit}:{search}:{role}:{sort_by}:{sort_order}"
-
-    # Tentar obter do cache
     cached_result = cache.get(cache_key)
     if cached_result:
         return cached_result
 
-    from sqlalchemy import or_, and_, desc, asc
+    from sqlalchemy import asc, desc, or_
 
-    # Validações
     if page < 1:
         page = 1
     if limit < 1 or limit > 100:
         limit = 10
 
-    # Campos válidos para ordenação
     valid_sort_fields = ["name", "email", "created_at", "role"]
     if sort_by not in valid_sort_fields:
         sort_by = "created_at"
-
     if sort_order not in ["asc", "desc"]:
         sort_order = "desc"
 
-    # Construir query base
     query = db.query(user_repository.models.User)
 
-    # Aplicar filtros
     if search:
         search_term = f"%{search}%"
         query = query.filter(
             or_(
                 user_repository.models.User.name.ilike(search_term),
-                user_repository.models.User.email.ilike(search_term)
+                user_repository.models.User.email.ilike(search_term),
             )
         )
 
     if role:
         query = query.filter(user_repository.models.User.role == role)
 
-    # Aplicar ordenação
-    if sort_order == "desc":
-        query = query.order_by(desc(getattr(user_repository.models.User, sort_by)))
-    else:
-        query = query.order_by(asc(getattr(user_repository.models.User, sort_by)))
+    sort_column = getattr(user_repository.models.User, sort_by)
+    query = query.order_by(desc(sort_column) if sort_order == "desc" else asc(sort_column))
 
-    # Paginação
     offset = (page - 1) * limit
     total = query.count()
     users = query.offset(offset).limit(limit).all()
@@ -137,17 +171,15 @@ def list_users_advanced(
         "page": page,
         "limit": limit,
         "total": total,
-        "total_pages": (total + limit - 1) // limit,  # Ceiling division
+        "total_pages": (total + limit - 1) // limit,
         "data": users,
         "filters": {
             "search": search,
             "role": role,
             "sort_by": sort_by,
-            "sort_order": sort_order
-        }
+            "sort_order": sort_order,
+        },
     }
 
-    # Cache por 5 minutos
     cache.set(cache_key, result, expire=300)
-
     return result

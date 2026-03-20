@@ -1,88 +1,213 @@
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
-from enum import Enum
+"""Schemas Pydantic usados para entrada, saida e validacao da API."""
 
-# Enum para roles
+from enum import Enum
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
 class UserRole(str, Enum):
+    """Papeis aceitos pela API para controle de acesso."""
+
     ADMIN = "admin"
     USER = "user"
 
-###SCHEMAS PARA USUÁRIOS E PLANOS
-class UserCreate(BaseModel):
+
+class StrictSchema(BaseModel):
+    """Schema base que rejeita campos extras enviados pelo cliente."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class UserBase(StrictSchema):
+    """Campos compartilhados entre criacao e atualizacao de usuario."""
+
     name: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
-    phone: Optional[str] = Field(None, min_length=10, max_length=20)
-    password: str = Field(..., min_length=8)
-    role: UserRole = UserRole.USER
+    phone: str | None = Field(None, min_length=10, max_length=20)
 
-    @validator("password")
-    def validate_password(cls, v):
-        if not any(c.isupper() for c in v):
-            raise ValueError("Senha deve ter pelo menos 1 letra maiúscula")
-        if not any(c.islower() for c in v):
-            raise ValueError("Senha deve ter pelo menos 1 letra minúscula")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Senha deve ter pelo menos 1 número")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
-            raise ValueError("Senha deve ter pelo menos 1 caractere especial")
-        # Verificar senhas comuns
-        common_passwords = ["password", "123456", "admin", "qwerty"]
-        if v.lower() in common_passwords:
-            raise ValueError("Senha muito comum, escolha uma mais forte")
-        return v
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        """Impede nomes com numeros e remove espacos excedentes."""
+        if any(char.isdigit() for char in value):
+            raise ValueError("Nome nao pode conter numeros")
+        return value.strip()
 
-    @validator("name")
-    def validate_name(cls, v):
-        if any(char.isdigit() for char in v):
-            raise ValueError("Nome não pode conter números")
-        return v.strip()
-
-    @validator("phone")
-    def validate_phone(cls, v):
-        if v:
-            # Permitir apenas números, espaços, hífens e parênteses
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        """Aceita apenas caracteres comuns de telefone."""
+        if value:
             allowed_chars = set("0123456789 -()")
-            if not all(c in allowed_chars for c in v):
-                raise ValueError("Telefone deve conter apenas números e caracteres válidos")
-        return v
+            if not all(char in allowed_chars for char in value):
+                raise ValueError("Telefone deve conter apenas numeros e caracteres validos")
+        return value
+
+
+class UserCreate(UserBase):
+    """Payload publico de cadastro de usuario."""
+
+    password: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        """Exige senha forte e bloqueia combinacoes muito comuns."""
+        if not any(char.isupper() for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 letra maiuscula")
+        if not any(char.islower() for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 letra minuscula")
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 numero")
+        if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?" for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 caractere especial")
+
+        common_passwords = ["password", "123456", "admin", "qwerty"]
+        if value.lower() in common_passwords:
+            raise ValueError("Senha muito comum, escolha uma mais forte")
+
+        return value
+
+
+class UserUpdate(UserBase):
+    """Payload de atualizacao de usuario sem permitir troca de papel."""
+
+    password: str | None = Field(None, min_length=8, max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def validate_optional_password(cls, value: str | None) -> str | None:
+        """Aplica as mesmas regras de senha apenas quando houver troca."""
+        if value is None:
+            return value
+
+        if not any(char.isupper() for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 letra maiuscula")
+        if not any(char.islower() for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 letra minuscula")
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 numero")
+        if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?" for char in value):
+            raise ValueError("Senha deve ter pelo menos 1 caractere especial")
+
+        common_passwords = ["password", "123456", "admin", "qwerty"]
+        if value.lower() in common_passwords:
+            raise ValueError("Senha muito comum, escolha uma mais forte")
+
+        return value
+
+
+class UserRoleUpdate(StrictSchema):
+    """Payload exclusivo para troca explicita de papel de usuario."""
+
+    role: UserRole
+
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    """Credenciais usadas no fluxo de login."""
 
-class UserResponse(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=72)
+
+
+class UserResponse(StrictSchema):
+    """Resposta publica de usuario sem campos sensiveis."""
+
     id: int
     name: str
     email: EmailStr
-    phone: Optional[str]
+    phone: str | None
     role: UserRole
-    plan_id: Optional[int]
+    plan_id: int | None
 
-    class Config:
-        from_attributes = True
-        extra = "forbid"
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
-###CONFIGURAÇÃO PARA USAR MODELOS ORM
-class PlanCreate(BaseModel):
-    name: str
-    price: float
-    speed: int
+
+class PlanCreate(StrictSchema):
+    """Payload de criacao de plano."""
+
+    name: str = Field(..., min_length=3, max_length=100)
+    price: float = Field(..., gt=0)
+    speed: int = Field(..., gt=0)
+
+
 class PlanResponse(PlanCreate):
+    """Resposta publica de um plano cadastrado."""
+
     id: int
 
-    class Config:
-        from_attributes = True
-        extra = "forbid"
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
-###SCHEMAS PARA TOKENS
-class TokenResponse(BaseModel):
+
+class PlanListFilters(StrictSchema):
+    """Conjunto de filtros aceitos na listagem de planos."""
+
+    search: str | None = None
+    min_speed: int | None = None
+    max_speed: int | None = None
+    min_price: float | None = None
+    max_price: float | None = None
+    sort_by: Literal["name", "price", "speed"]
+    sort_order: Literal["asc", "desc"]
+
+
+class PlanListResponse(StrictSchema):
+    """Resposta paginada simplificada para listagem de planos."""
+
+    total: int
+    data: list[PlanResponse]
+    filters: PlanListFilters
+
+
+class UserListFilters(StrictSchema):
+    """Conjunto de filtros aceitos na listagem de usuarios."""
+
+    search: str | None = None
+    role: UserRole | None = None
+    sort_by: Literal["name", "email", "created_at", "role"]
+    sort_order: Literal["asc", "desc"]
+
+
+class UserListResponse(StrictSchema):
+    """Resposta da listagem administrativa de usuarios."""
+
+    page: int
+    limit: int
+    total: int
+    total_pages: int
+    data: list[UserResponse]
+    filters: UserListFilters
+
+
+class MessageResponse(StrictSchema):
+    """Resposta padrao para operacoes simples com mensagem."""
+
+    message: str
+
+
+class UserSubscriptionResponse(StrictSchema):
+    """Resposta de vinculo entre usuario e plano."""
+
+    message: str
+    user: UserResponse
+
+
+class TokenResponse(StrictSchema):
+    """Resposta de autenticacao com access e refresh token."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
 
-###SCHEMA PARA INSCRIÇÃO DE USUÁRIO EM UM PLANO        
-class SubscribePlan(BaseModel):
-    plan_id: int
+class RefreshTokenRequest(StrictSchema):
+    """Payload para refresh e logout."""
+
+    refresh_token: str = Field(..., min_length=20)
+
+
+class SubscribePlan(StrictSchema):
+    """Payload usado para assinar um plano existente."""
+
+    plan_id: int = Field(..., gt=0)

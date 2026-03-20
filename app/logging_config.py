@@ -1,41 +1,41 @@
+"""Configuracao de logs com cuidado para nao expor dados sensiveis."""
+
 import logging
 import sys
+
 from .config import settings
 
-# Configuração de logging seguro
+
 def setup_logging():
-    # Remover handlers padrão
+    """Configura o logger raiz e mascara mensagens sensiveis."""
     logging.getLogger().handlers.clear()
-    
-    # Configurar nível de log baseado no ambiente
+
     log_level = logging.INFO if settings.environment == "production" else logging.DEBUG
-    
-    # Formatter que não exibe dados sensíveis
+
     class SafeFormatter(logging.Formatter):
+        """Redige mensagens com senha ou token antes de envia-las ao console."""
+
         def format(self, record):
-            # Remover dados sensíveis das mensagens de log
-            if hasattr(record, 'getMessage'):
-                message = record.getMessage()
-                # Sanitizar mensagens que podem conter dados sensíveis
-                if 'password' in message.lower() or 'token' in message.lower():
-                    message = "[REDACTED SENSITIVE DATA]"
-                record.msg = message
-            return super().format(record)
-    
-    # Handler para console
+            """Cria uma copia do registro para nao alterar o objeto original."""
+            if not hasattr(record, "getMessage"):
+                return super().format(record)
+
+            message = record.getMessage()
+            if "password" in message.lower() or "token" in message.lower():
+                message = "[REDACTED SENSITIVE DATA]"
+
+            safe_record = logging.makeLogRecord(record.__dict__.copy())
+            safe_record.msg = message
+            safe_record.args = ()
+            return super().format(safe_record)
+
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(SafeFormatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-    
-    # Configurar logger raiz
-    logging.basicConfig(
-        level=log_level,
-        handlers=[console_handler]
+    console_handler.setFormatter(
+        SafeFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
-    
-    # Configurar loggers específicos
-    logging.getLogger('uvicorn').setLevel(logging.WARNING)
-    logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
-    
+
+    logging.basicConfig(level=log_level, handlers=[console_handler])
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+
     return logging.getLogger(__name__)

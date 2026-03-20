@@ -1,0 +1,28 @@
+changelog:
+  categories:
+    - title: Seguranca
+      labels:
+        - security
+        - auth
+        - hardening
+    - title: API e Regras de Negocio
+      labels:
+        - feature
+        - api
+        - backend
+    - title: Testes e Qualidade
+      labels:
+        - test
+        - ci
+        - quality
+    - title: Documentacao
+      labels:
+        - docs
+    - title: Infra e Build
+      labels:
+        - infra
+        - docker
+        - chore
+  exclude:
+    labels:
+      - skip-changelog

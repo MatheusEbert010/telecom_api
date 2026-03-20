@@ -1,24 +1,19 @@
+"""Configuracao da conexao SQLAlchemy e da sessao do banco."""
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from .config import settings
 
-###URL DE CONEXÃO COM O BANCO DE DADOS, CONFIGURAÇÃO DO MOTOR, SESSÃO E BASE PARA MODELOS ORM
 DATABASE_URL = settings.database_url
 
-###CONFIGURAÇÃO DO BANCO DE DADOS COM SQLALCHEMY, INCLUINDO SESSÃO E BASE PARA MODELOS ORM
 engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
-
-###BASE PARA MODELOS ORM
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-###DEPENDÊNCIA PARA OBTER A SESSÃO DO BANCO DE DADOS, GARANTINDO QUE A SESSÃO SEJA FECHADA APÓS O USO
+
 def get_db():
+    """Fornece uma sessao por requisicao e garante o fechamento ao final."""
     db = SessionLocal()
     try:
         yield db

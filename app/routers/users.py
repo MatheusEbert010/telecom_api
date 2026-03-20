@@ -1,120 +1,125 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""Rotas HTTP relacionadas ao gerenciamento de usuarios."""
+
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
-from ..crud import crud_completo
-from ..schemas import UserCreate
+
+from .. import models, schemas
+from ..dependencies.auth_dependency import get_current_admin, get_current_user
 from ..services import user_service
-from .. import schemas
-from ..dependencies.auth_dependency import get_current_user, get_current_admin
-from .. import models
 from ..telecom_db import get_db
 
-###ROTA PARA GERENCIAR USUÁRIOS, INCLUINDO INSCRIÇÃO EM PLANOS
-router = APIRouter(prefix="/users", tags=["Usuários"])
+router = APIRouter(prefix="/users", tags=["Usuarios"])
 
-###ROTAS PARA GERENCIAR USUÁRIOS
-@router.post("/")
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+
+@router.post("/", response_model=schemas.UserResponse, status_code=201)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Cadastra um novo usuario comum."""
     return user_service.create_user(db, user)
 
-###LISTAR USUÁRIOS COM FILTROS AVANÇADOS E BUSCA
-@router.get("/")
+
+@router.get("/", response_model=schemas.UserListResponse)
 def get_users(
-    page: int = 1,
-    limit: int = 10,
-    search: str | None = None,  # Busca por nome ou email
-    role: str | None = None,     # Filtro por role (admin/user)
-    sort_by: str = "created_at", # Ordenação: name, email, created_at
-    sort_order: str = "desc",    # asc ou desc
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: str | None = Query(None, min_length=2, max_length=100),
+    role: schemas.UserRole | None = None,
+    sort_by: Literal["name", "email", "created_at", "role"] = "created_at",
+    sort_order: Literal["asc", "desc"] = "desc",
     current_user: models.User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """Lista usuarios para administradores com filtros e ordenacao."""
     return user_service.list_users_advanced(
         db=db,
         page=page,
         limit=limit,
         search=search,
-        role=role,
+        role=role.value if role else None,
         sort_by=sort_by,
-        sort_order=sort_order
+        sort_order=sort_order,
     )
 
-###ROTAS PARA GERENCIAR USUÁRIOS POR ID
-@router.get("/{user_id}")
+
+@router.get("/me", response_model=schemas.UserResponse)
+def get_me(current_user: models.User = Depends(get_current_user)):
+    """Retorna os dados do usuario autenticado."""
+    return current_user
+
+
+@router.get("/{user_id}", response_model=schemas.UserResponse)
 def get_user(
-    user_id: int,
+    user_id: int = Path(..., gt=0),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Usuário pode ver seus próprios dados ou admin pode ver qualquer um
+    """Retorna um usuario especifico respeitando regra de acesso por dono ou admin."""
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    user = crud_completo.get_user_by_id(db, user_id)
-
+    user = user_service.get_user_by_id(db, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
 
     return user
 
-####ROTAS PARA DELETAR E ATUALIZAR USUÁRIOS
-@router.delete("/{user_id}")
+
+@router.patch("/{user_id}/role", response_model=schemas.UserResponse)
+def change_user_role(
+    data: schemas.UserRoleUpdate,
+    user_id: int = Path(..., gt=0),
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Permite ao administrador alterar explicitamente o papel de um usuario."""
+    return user_service.change_user_role(db, user_id, data.role)
+
+
+@router.delete("/{user_id}", response_model=schemas.MessageResponse)
 def delete_user(
-    user_id: int,
-    current_user: models.User = Depends(get_current_admin),  # Apenas admin pode deletar
-    db: Session = Depends(get_db)
+    user_id: int = Path(..., gt=0),
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
 ):
-    user = crud_completo.delete_user(db, user_id)
+    """Remove um usuario, exceto quando o admin tenta excluir a propria conta."""
+    if current_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Um administrador nao pode deletar a propria conta",
+        )
 
+    user = user_service.delete_user(db, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
 
-    return {"message": "Usuário deletado com sucesso"}
+    return {"message": "Usuario deletado com sucesso"}
 
-####ROTA PARA ATUALIZAR USUÁRIO
-@router.put("/{user_id}")
+
+@router.put("/{user_id}", response_model=schemas.UserResponse)
 def update_user(
-    user_id: int,
-    user: schemas.UserCreate,
+    user: schemas.UserUpdate,
+    user_id: int = Path(..., gt=0),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Usuário pode atualizar seus próprios dados ou admin pode atualizar qualquer um
+    """Atualiza um usuario respeitando a regra de dono ou administrador."""
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    updated_user = crud_completo.update_user(db, user_id, user)
+    return user_service.update_user(db, user_id, user)
 
-    if not updated_user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    return updated_user
-
-###ROTA PARA INSCRIÇÃO DE USUÁRIO EM UM PLANO
-@router.post("/{user_id}/subscribe")
+@router.post("/{user_id}/subscribe", response_model=schemas.UserSubscriptionResponse)
 def subscribe_plan(
-    user_id: int,
     data: schemas.SubscribePlan,
+    user_id: int = Path(..., gt=0),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Usuário pode se inscrever ou admin pode inscrever qualquer um
+    """Assina um plano para o proprio usuario ou para outro usuario via admin."""
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    result = crud_completo.subscribe_user_to_plan(db, user_id, data.plan_id)
-
-    if result is None:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-    if result == "Plano não encontrado":
-        raise HTTPException(status_code=404, detail="Plano não encontrado")
-
-    return {
-        "message": "Plano assinado com sucesso",
-        "user": result
-    }
-
-###ROTA PARA OBTER INFORMAÇÕES DO USUÁRIO AUTENTICADO
-@router.get("/me")
-def get_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+    result = user_service.subscribe_plan(db, user_id, data.plan_id)
+    return {"message": "Plano assinado com sucesso", "user": result}
