@@ -50,3 +50,32 @@ def get_users_paginated(db: Session, page: int = 1, limit: int = 10, email: str 
     users = query.offset(offset).limit(limit).all()
 
     return users, total
+
+
+### CRIAR TOKEN DE REFRESH
+def create_refresh_token(db: Session, token_data: dict):
+
+    db_token = models.RefreshToken(**token_data)
+
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+
+    return db_token
+
+
+### BUSCAR TOKEN DE REFRESH POR TOKEN
+def get_refresh_token(db: Session, token: str):
+    return db.query(models.RefreshToken).filter(models.RefreshToken.token == token).first()
+
+
+### DELETAR TOKEN DE REFRESH
+def delete_refresh_token(db: Session, token: str):
+
+    db_token = db.query(models.RefreshToken).filter(models.RefreshToken.token == token).first()
+
+    if db_token:
+        db.delete(db_token)
+        db.commit()
+
+    return db_token

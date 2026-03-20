@@ -119,3 +119,4 @@ watchdog==6.0.0
 watchfiles==1.1.1
 websockets==16.0
 zstandard==0.25.0
+redis==7.3.0

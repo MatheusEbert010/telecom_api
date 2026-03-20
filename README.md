@@ -1,381 +1,215 @@
-### Telecom API
-🚀🗼🛜
+# 🚀 Telecom API
 
-API REST desenvolvida para simular o gerenciamento completo de um sistema para empresas de telecomunicações.
-
-O projeto foi construído utilizando a linguagem **Python** **FastAPI**, **SQLAlchemy** e **MySQL**, com arquitetura modular baseada em boas práticas de desenvolvimento backend.
-Esta API permite cadastrar usuários, gerenciar planos de internet e associar clientes aos planos disponíveis.
+API REST robusta para gerenciamento de usuários e planos de telecomunicações, construída com foco em **segurança, performance e escalabilidade**.
 
 ---
 
-## Tecnologias Utilizadas
+## 📌 Visão Geral
 
-- Python
-- FastAPI
-- SQLAlchemy
-- MySQL
-- Uvicorn
-- Pydantic
-- Swagger (documentação automática)
-- JWT (autenticação)
-- Passlib / Bcrypt (criptografia de senha)
+A Telecom API simula um sistema real de operadoras de telecom, permitindo:
 
-As bibliotecas envolvidas são **FastAPI, SQLAlchemy, Passlib, bcrypt** e **python-jose**.
+- Gestão de usuários
+- Gestão de planos de internet
+- Associação de usuários a planos
+- Autenticação segura com JWT
+- Filtros, paginação e busca avançada
+
+Projeto desenvolvido com foco em **boas práticas de backend moderno**.
 
 ---
 
-## Arquitetura do Projeto
+## 🧠 Principais Features
 
-```
-app
-│── routers
-│   |── users.py
-|   |── plans.py
-|   |── auth.py
-│ 
-|── services
-│   |── user_service.py
-|
-|── crud
-|   |── user_repository.py
-|   |── plan_repository.py
-|   |── crud_completo
-|
-│── security.py
-|── models.py
-|── schemas.py
-|── telecom_db.py
-│── main.py
-
-```
-
-### Responsabilidade dos módulos
-
-| Arquivo            | Responsabilidade                            |
-| ----------------   | ------------------------------------------  |
-| main.py            | Inicialização da API                        |
-| telecom_db.py      | Conexão com o banco de dados                |
-| models.py          | Definição das tabelas                       |
-| schemas.py         | Validação de dados com Pydantic             |
-| crud/repository.py | Operações de banco de dados                 |
-| services.py        | Regras de negócio da aplicação              |
-| routers.py         | Definição dos endpoints da API              |
-| security.py        | Criptografia de senha e geração de token JWT|
-| auth.py            | Autenticação de usuários                    |
+- 🔐 Autenticação JWT (access + refresh token)
+- 👥 RBAC (controle de acesso por roles)
+- 🔍 Filtros, busca e ordenação
+- 📄 Paginação com metadados
+- ⚡ Cache com Redis
+- 🚦 Rate limiting (proteção contra abuso)
+- 🧾 Logs de auditoria com dados mascarados
+- 🐳 Docker + Docker Compose
+- 📊 Health check endpoint
+- 📚 Documentação automática (Swagger)
 
 ---
 
-## Funcionalidades da API
+## 🏗️ Stack Tecnológica
 
-CRUD completo de usuários:
-
-* Criar usuário
-* Listar usuários
-* Buscar usuário por ID
-* Atualizar usuário
-* Deletar usuário
-
----
-
-## Endpoints
-
-| Método | Endpoint              | Descrição                |
-| ------ | --------------------- | -----------------        |
-| POST   | /users                | Criar usuário            |
-| POST   | /users/{id}/subscribe | Assinar plano            |
-| GET    | /users                | Listar usuários          |
-| GET    | /users/{id}           | Buscar usuário           |
-| PUT    | /users/{id}           | Atualizar usuário        |
-| DELETE | /users/{id}           | Remover usuário          |
-| POST   | /auth/login           | Autenticação do usuário  |
+| Camada        | Tecnologia        |
+|--------------|------------------|
+| Backend      | FastAPI          |
+| ORM          | SQLAlchemy       |
+| Banco        | MySQL            |
+| Cache        | Redis            |
+| Auth         | JWT + Bcrypt     |
+| Validação    | Pydantic         |
+| Migrations   | Alembic          |
+| Rate Limit   | SlowAPI          |
 
 ---
 
-## Exemplo de Requisição
-
-### Criar usuário
-
+## 📂 Estrutura do Projeto
+```bash
+telecom_api/
+├── app/
+│ ├── main.py
+│ ├── models.py
+│ ├── schemas.py
+│ ├── config.py
+│ ├── security.py
+│ ├── cache.py
+│ ├── telecom_db.py
+│ ├── routers/
+│ ├── services/
+│ ├── crud/
+│ └── dependencies/
+├── alembic/
+├── logs/
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
 ```
-POST /users
+
+## 🔐 Segurança
+
+- Senhas criptografadas com **bcrypt**
+- Tokens JWT com expiração
+- Refresh tokens
+- Rate limiting em endpoints sensíveis
+- Headers de segurança (HSTS, CSP, XSS Protection)
+- Validação rigorosa de entrada
+
+---
+
+## ⚡ Performance
+
+- Cache Redis (TTL configurável)
+- Queries otimizadas com índices
+- Paginação eficiente
+- Connection pooling
+- Fallback automático se Redis indisponível
+
+---
+
+## 🚀 Como Rodar o Projeto
+
+### 🔧 Pré-requisitos
+- Python 3.11+
+- MySQL 8+
+- Redis (opcional)
+
+---
+
+### ▶️ Execução local
+
+```bash
+git clone https://github.com/MatheusEbert010/telecom-api.git
+cd telecom-api
+
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+
+pip install -r requirements.txt
+
+cp .env.example .env
+# configure o .env
+
+alembic upgrade head
+
+uvicorn app.main:app --reload
 ```
 
-Body:
-
-```json
-{
- "name": "Matheus",
- "email": "matheus@email.com",
- "phone": "33999999999"
-}
+### 🐳 Com Docker
+```bash
+docker-compose up -d
 ```
 
 ---
 
-# Sistema de Planos de Internet
-
-Foi implementado um sistema de **Planos de Internet** permitindo que diferentes usuários possam estar associados a um plano.
-
-Cada plano possui:
-
-- id
-- name
-- price
-- speed (Mbps)
+## 📡 Endpoints Principais
+🔐 Auth
+POST /auth/login
+POST /auth/refresh
+POST /auth/logout
 
 ---
 
-# Relacionamento entre Usuário e Plano
-
-Foi criado um relacionamento **1:N (um plano pode ter vários usuários)**.
-
-Estrutura:
-
-```
-Plan 1 ----- N Users
-```
-
-Um usuário pode ter apenas um plano ativo.
+## 👥 Usuários
+GET    /users
+POST   /users
+GET    /users/{id}
+PUT    /users/{id}
+DELETE /users/{id}
 
 ---
 
-
-# Endpoints de Planos
-
-Criar plano:
-
-```
-POST /plans
-```
-
-Exemplo de payload:
-```json
-{
-  "name": "Fibra 500MB",
-  "price": 99,
-  "speed": 500
-}
-```
-
-Listar planos:
-
-```
-GET /plans
-```
-
-# Contratação de planos pelos usuários
-
-Foi implementada a funcionalidade que permite que um usuário **contrate um plano de internet** diretamente pela API.
-Essa feature adiciona uma regra de negócio real, onde o sistema **valida a existência do usuário e do plano** antes de realizar a associação entre eles.
+## 📶 Planos
+GET    /plans
+POST   /plans
+GET    /plans/{id}
+PUT    /plans/{id}
+DELETE /plans/{id}
 
 ---
 
-# Endpoint
-
-Contratar um plano
-
----
-
+## 🔗 Assinaturas
 POST /users/{user_id}/subscribe
 
 ---
 
-Body:
-
-```json
-{
-  "plan_id": 1
-}
+## Exemplos de uso
+```Bash
+curl -X POST http://localhost:8000/auth/login \
+-H "Content-Type: application/json" \
+-d '{"email":"admin@telecom.com","password":"Admin123!"}'
 ```
 
 ---
 
-# Fluxo da operação
-
-- Verifica se o usuário existe no banco.
-- Verifica se o plano existe.
-- Associa o plano ao usuário.
-- Salva a alteração no banco de dados.
-
----
-
----
-
-# Paginação de usuários
-
-- Esse padrão permite:
-- Paginação real
-- Frontend saber total de registros
-- Criar navegação entre páginas
-- Escalar para milhares de registros
-
----
-
-GET /users?page=1&limit=10
-
----
-
-```json
-{
-  "page": 1,
-  "limit": 5,
-  "total": 18,
-  "data": [
-    {
-      "id": 1,
-      "name": "Matheus",
-      "email": "matheus@email.com",
-      "phone": "33999999999"
-    }
-  ]
-}
-```
-
-# Filtro de usuários por email
-
-A API permite buscar usuários utilizando o email como parâmetro de consulta.
-
-Exemplo: 
-
----
-
-GET /users?email=matheus@email.com
-
----
-
-Esse filtro também pode ser combinado com paginação:
-
----
-
-GET /users?page=1&limit=10&email=matheus@email.com
-
----
-
-# Login
-
-Endpoint:
-
---- 
-
-POST /auth/login
-
----
-
-- Body
-
-```json
-{
- "email": "matheus@email.com",
- "password": "123456"
-}
-```
-
-Resposta
-
-```json
-
-{
- "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
- "token_type": "bearer"
-}
-
-```
-
-## Documentação da API
-
-- A documentação interativa é gerada automaticamente pelo **Swagger**.
-
-- Após rodar o projeto, acesse:
-
-```
-
-http://127.0.0.1:8000/docs
-
-```
-
-# Como Rodar o Projeto
-
-## 1 Clonar o repositório
-
-```bash
-git clone https://github.com/MatheusEbert010/telecom_api.git
-```
-
-## 2 Entrar na pasta
-
-```bash
-cd telecom_api
-```
-
-## 3 Criar ambiente virtual
-
-```bash
-python -m venv venv
-```
-
-## 4 Ativar ambiente
-
-Windows
-
-```bash
-venv\Scripts\activate
-```
-
-Linux / Mac
-
-```bash
-source venv/bin/activate
+## Buscar Planos
+```Bash
+GET /plans?min_price=50&max_price=200&sort_by=price
 ```
 
 ---
 
-## 5 Instalar dependências
-
-```bash
-pip install -r requirements.txt
+## Health Check
+```Bash 
+GET /health
 ```
 
 ---
 
-## 6 Rodar a API
-
-```bash
-uvicorn app.main:app --reload
-```
+## 📚 Documentação
+- Swagger: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ---
 
-# Próximas Implementações
+## 🎯 Objetivo do Projeto
 
-O projeto continuará evoluindo com novas funcionalidades típicas de sistemas backend profissionais.
-
-Roadmap:
-
-- Proteção de rotas com JWT
-- Middleware de autenticação
-- Dockerização da API
-- Deploy em ambiente cloud
-- Testes automatizados
+- Este projeto foi desenvolvido para:
+- Consolidar conhecimentos em backend
+- Aplicar arquitetura REST
+- Trabalhar com autenticação e segurança
+- Simular um sistema real de telecom
+- Servir como projeto de portfólio
 
 ---
 
-# Objetivo do Projeto
+## 📈 Próximas Melhorias
 
-Este projeto foi desenvolvido com o objetivo de:
-
-- praticar desenvolvimento backend com FastAPI
-- aplicar conceitos de APIs REST
-- trabalhar com ORM utilizando SQLAlchemy
-- estruturar projetos backend de forma escalável
-- construir um portfólio sólido para vagas de backend
+ -  2FA (Two-Factor Authentication)
+ -  WebSockets (notificações)
+ -  Dashboard administrativo
+ -  Testes automatizados completos
 
 ---
 
-# Autor
+## 👨‍💻 Autor
 
-Matheus de Souza Ebert
-
-LinkedIn:  
-www.linkedin.com/in/matheus-ebert
-
-GitHub:  
-https://github.com/MatheusEbert010
+- Matheus de Souza Ebert
+- GitHub: https://github.com/MatheusEbert010
+- LinkedIn: https://linkedin.com/in/matheusebert
+- Email: dev.matheusebert@gmail.com
