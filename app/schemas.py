@@ -60,6 +60,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        extra = "forbid"
 
 ###CONFIGURAÇÃO PARA USAR MODELOS ORM
 class PlanCreate(BaseModel):
@@ -68,8 +69,10 @@ class PlanCreate(BaseModel):
     speed: int
 class PlanResponse(PlanCreate):
     id: int
+
     class Config:
         from_attributes = True
+        extra = "forbid"
 
 ###SCHEMAS PARA TOKENS
 class TokenResponse(BaseModel):
