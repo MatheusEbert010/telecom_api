@@ -4,7 +4,6 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from datetime import datetime, timedelta
 import logging
-
 from .. import schemas
 from ..telecom_db import get_db
 from ..crud import user_repository
@@ -30,23 +29,25 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
     is_valid = user and verify_password(data.password, user.password or "")
 
     if not is_valid:
-        logger.warning(f"Tentativa de login falhada para email: {data.email} do IP: {request.client.host}")
+        client_ip = request.client.host if request.client else "unknown"
+        logger.warning(f"Tentativa de login falhada para email: {data.email} do IP: {client_ip}")
         raise HTTPException(
             status_code=401,
             detail="Credenciais inválidas"
         )
 
-    logger.info(f"Login bem-sucedido para usuário: {user.email} do IP: {request.client.host}")
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"Login bem-sucedido para usuário: {user.email} do IP: {client_ip}")  # type: ignore
     
     # Criar tokens
-    access_token = create_access_token({"sub": user.email})
-    refresh_token = create_refresh_token({"sub": user.email})
+    access_token = create_access_token({"sub": user.email})  # type: ignore
+    refresh_token = create_refresh_token({"sub": user.email})  # type: ignore
 
     # Salvar refresh token no banco
     expires_at = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
     user_repository.create_refresh_token(db, {
         "token": refresh_token,
-        "user_id": user.id,
+        "user_id": user.id,  # type: ignore
         "expires_at": expires_at
     })
 
@@ -62,7 +63,14 @@ def refresh_token(data: schemas.RefreshTokenRequest, db: Session = Depends(get_d
     # Verificar se o refresh token existe e não expirou
     db_token = user_repository.get_refresh_token(db, data.refresh_token)
 
-    if not db_token or db_token.expires_at < datetime.utcnow():
+    if not db_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Token de refresh inválido ou expirado"
+        )
+    
+    current_time = datetime.utcnow()
+    if db_token.expires_at < current_time:  # type: ignore
         raise HTTPException(
             status_code=401,
             detail="Token de refresh inválido ou expirado"

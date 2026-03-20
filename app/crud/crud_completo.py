@@ -1,19 +1,26 @@
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..cache import cache
+from ..security import hash_password
 import json
+from typing import Optional
 
 ###CRIAÇÃO DE USUÁRIOS E PLANOS, INCLUINDO INSCRIÇÃO DE USUÁRIOS EM PLANOS, COM ACESSO AO BANCO DE DADOS
 def create_user(db: Session, user: schemas.UserCreate):
     db_user = models.User(
         name=user.name,
         email=user.email,
-        phone=user.phone
+        phone=user.phone,
+        password=hash_password(user.password),
+        role=user.role
     )
 
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    # Invalidar cache de usuários
+    cache.clear_pattern("users:list:*")
 
     return db_user
 
@@ -32,6 +39,8 @@ def delete_user(db: Session, user_id: int):
     if user:
         db.delete(user)
         db.commit()
+        # Invalidar cache de usuários
+        cache.clear_pattern("users:list:*")
 
     return user
 
@@ -42,12 +51,18 @@ def update_user(db: Session, user_id: int, user_data: schemas.UserCreate):
     if not user:
         return None
 
-    user.name = user_data.name
-    user.email = user_data.email
-    user.phone = user_data.phone
+    user.name = user_data.name  # type: ignore
+    user.email = user_data.email  # type: ignore
+    user.phone = user_data.phone if user_data.phone else None  # type: ignore
+    password_hash = hash_password(user_data.password)
+    user.password = password_hash.decode('utf-8') if isinstance(password_hash, bytes) else password_hash  # type: ignore
+    user.role = user_data.role  # type: ignore
 
     db.commit()
     db.refresh(user)
+
+    # Invalidar cache de usuários
+    cache.clear_pattern("users:list:*")
 
     return user
 
@@ -76,11 +91,11 @@ def get_plans(db: Session):
 ### LISTAGEM AVANÇADA DE PLANOS COM FILTROS
 def get_plans_advanced(
     db: Session,
-    search: str = None,
-    min_speed: int = None,
-    max_speed: int = None,
-    min_price: float = None,
-    max_price: float = None,
+    search: Optional[str] = None,
+    min_speed: Optional[int] = None,
+    max_speed: Optional[int] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
     sort_by: str = "price",
     sort_order: str = "asc"
 ):
@@ -152,7 +167,6 @@ def get_plans_advanced(
 
 ###ACESSO AO BANCO DE DADOS PARA INSCRIÇÃO DE USUÁRIO EM UM PLANO
 def subscribe_user_to_plan(db: Session, user_id: int, plan_id: int):
-
     user = db.query(models.User).filter(models.User.id == user_id).first()
 
     if not user:
@@ -161,11 +175,14 @@ def subscribe_user_to_plan(db: Session, user_id: int, plan_id: int):
     plan = db.query(models.Plan).filter(models.Plan.id == plan_id).first()
 
     if not plan:
-        return "Plano indisponível no momento."
+        return None
 
-    user.plan_id = plan_id
+    user.plan_id = plan_id  # type: ignore
 
     db.commit()
     db.refresh(user)
+
+    # Invalidar cache de usuários
+    cache.clear_pattern("users:list:*")
 
     return user

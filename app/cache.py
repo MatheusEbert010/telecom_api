@@ -4,12 +4,15 @@ import logging
 from typing import Any, Optional
 from .config import settings
 
+# Ensure we're using the standard synchronous Redis client
+from redis import Redis
+
 logger = logging.getLogger(__name__)
 
 class Cache:
     def __init__(self):
         try:
-            self.redis_client = redis.Redis(
+            self.redis_client = Redis(
                 host=settings.redis_host if hasattr(settings, 'redis_host') else 'localhost',
                 port=settings.redis_port if hasattr(settings, 'redis_port') else 6379,
                 db=settings.redis_db if hasattr(settings, 'redis_db') else 0,
@@ -36,7 +39,7 @@ class Cache:
         try:
             value = self.redis_client.get(key)
             if value:
-                return json.loads(value)
+                return json.loads(str(value))
             return None
         except Exception as e:
             logger.error(f"Cache get error: {e}")
@@ -48,7 +51,7 @@ class Cache:
             return False
 
         try:
-            return self.redis_client.setex(key, expire, json.dumps(value))
+            return bool(self.redis_client.setex(key, expire, json.dumps(value)))
         except Exception as e:
             logger.error(f"Cache set error: {e}")
             return False
@@ -72,7 +75,9 @@ class Cache:
         try:
             keys = self.redis_client.keys(pattern)
             if keys:
-                return bool(self.redis_client.delete(*keys))
+                if isinstance(keys, list) and keys:
+                    self.redis_client.delete(*keys)
+                return True
             return True
         except Exception as e:
             logger.error(f"Cache clear pattern error: {e}")
