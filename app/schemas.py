@@ -207,6 +207,23 @@ class UserSubscriptionResponse(StrictSchema):
     user: UserResponse
 
 
+class UserPlanResponse(StrictSchema):
+    """Resposta dedicada ao plano atualmente associado ao usuario autenticado."""
+
+    user_id: int
+    plan: PlanResponse
+
+
+class AdminStatsResponse(StrictSchema):
+    """Resumo administrativo com metricas basicas da base."""
+
+    total_users: int
+    total_admins: int
+    total_plans: int
+    users_with_plan: int
+    users_without_plan: int
+
+
 class TokenResponse(StrictSchema):
     """Resposta de autenticacao com access e refresh token."""
 

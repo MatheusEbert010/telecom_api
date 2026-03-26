@@ -2,14 +2,15 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import settings
 from .logging_config import setup_logging
-from .routers import auth, plans, users
+from .routers import admin, auth, plans, users
 from .time_utils import utc_now
 
 logger = setup_logging()
@@ -84,16 +85,64 @@ app.add_middleware(
 )
 
 
+ERROR_CODES = {
+    400: "requisicao_invalida",
+    401: "nao_autorizado",
+    403: "acesso_negado",
+    404: "recurso_nao_encontrado",
+    409: "conflito",
+    422: "erro_validacao",
+    500: "erro_interno",
+}
+
+
+def build_error_payload(status_code: int, detail: str, errors: list[dict] | None = None) -> dict:
+    """Monta um payload de erro consistente para clientes HTTP."""
+    payload = {
+        "code": ERROR_CODES.get(status_code, "erro_http"),
+        "detail": detail,
+    }
+
+    if errors:
+        payload["errors"] = errors
+
+    return payload
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_: Request, exc: HTTPException):
+    """Padroniza erros HTTP esperados mantendo o status e os headers originais."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=build_error_payload(exc.status_code, str(exc.detail)),
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(_: Request, exc: RequestValidationError):
+    """Traduz erros de validacao para um contrato estavel para o frontend."""
+    return JSONResponse(
+        status_code=422,
+        content=build_error_payload(
+            422,
+            "Dados de entrada invalidos",
+            errors=exc.errors(),
+        ),
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Padroniza erros inesperados sem expor detalhes sensiveis ao cliente."""
     logger.exception("Erro nao tratado ao processar %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Erro interno do servidor"},
+        content=build_error_payload(500, "Erro interno do servidor"),
     )
 
 
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(plans.router)

@@ -140,6 +140,32 @@ def subscribe_plan(db: Session, user_id: int, plan_id: int):
     return updated_user
 
 
+def cancel_plan_subscription(db: Session, user_id: int):
+    """Remove o plano atualmente associado ao usuario."""
+    user = user_repository.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
+    if user.plan_id is None:
+        raise HTTPException(status_code=400, detail="Usuario nao possui plano assinado")
+
+    updated_user = user_repository.update_user_plan(db, user, None)
+    cache.clear_pattern("users:list:*")
+    return updated_user
+
+
+def get_user_plan(db: Session, user_id: int):
+    """Retorna o plano ativo do usuario quando existir."""
+    user = user_repository.get_user_by_id_with_plan(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
+    if user.plan is None:
+        raise HTTPException(status_code=404, detail="Usuario nao possui plano assinado")
+
+    return {"user_id": user.id, "plan": user.plan}
+
+
 def list_users_paginated(
     db: Session,
     page: int = 1,
@@ -172,8 +198,6 @@ def list_users_advanced(
     if cached_result:
         return cached_result
 
-    from sqlalchemy import asc, desc, or_
-
     if page < 1:
         page = 1
     if limit < 1 or limit > 100:
@@ -185,26 +209,15 @@ def list_users_advanced(
     if sort_order not in ["asc", "desc"]:
         sort_order = "desc"
 
-    query = db.query(user_repository.models.User)
-
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            or_(
-                user_repository.models.User.name.ilike(search_term),
-                user_repository.models.User.email.ilike(search_term),
-            )
-        )
-
-    if role:
-        query = query.filter(user_repository.models.User.role == role)
-
-    sort_column = getattr(user_repository.models.User, sort_by)
-    query = query.order_by(desc(sort_column) if sort_order == "desc" else asc(sort_column))
-
-    offset = (page - 1) * limit
-    total = query.count()
-    users = query.offset(offset).limit(limit).all()
+    users, total = user_repository.get_users_advanced(
+        db=db,
+        page=page,
+        limit=limit,
+        search=search,
+        role=role,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
 
     result = {
         "page": page,

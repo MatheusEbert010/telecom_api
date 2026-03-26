@@ -143,6 +143,7 @@ def test_users_me_route_is_registered_before_user_id_route():
     ]
 
     assert user_routes.index("/users/me") < user_routes.index("/users/{user_id}")
+    assert user_routes.index("/users/me/plan") < user_routes.index("/users/{user_id}")
 
 
 def test_sensitive_user_routes_use_safe_response_models():
@@ -154,6 +155,7 @@ def test_sensitive_user_routes_use_safe_response_models():
     }
 
     assert user_routes["/users/"].response_model is schemas.UserListResponse
+    assert user_routes["/users/me/plan"].response_model is schemas.UserPlanResponse
     assert user_routes["/users/{user_id}/subscribe"].response_model is schemas.UserSubscriptionResponse
 
 
@@ -161,11 +163,50 @@ def test_auth_and_plan_routes_use_safe_response_models():
     """Confirma o contrato publico das rotas de auth e planos."""
     routes = {route.path: route for route in app.routes if isinstance(route, APIRoute)}
 
+    assert routes["/admin/stats"].response_model is schemas.AdminStatsResponse
     assert routes["/auth/login"].response_model is schemas.TokenResponse
     assert routes["/auth/refresh"].response_model is schemas.TokenResponse
     assert routes["/auth/logout"].response_model is schemas.MessageResponse
     assert routes["/plans/"].response_model is schemas.PlanListResponse
     assert "/plans/{user_id}/subscribe" not in routes
+
+
+def test_cancel_subscription_requires_existing_plan(db_session):
+    """Evita cancelamento redundante quando o usuario ainda nao possui plano."""
+    created_user = user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Matheus Ebert",
+            email="matheus@example.com",
+            phone="11999998888",
+            password="Admin123!",
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        user_service.cancel_plan_subscription(db_session, created_user.id)
+
+    assert exc_info.value.status_code == 400
+    assert "nao possui plano" in exc_info.value.detail
+
+
+def test_get_user_plan_requires_existing_subscription(db_session):
+    """Explicita que o endpoint dedicado falha quando nao ha plano assinado."""
+    created_user = user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Matheus Ebert",
+            email="matheus@example.com",
+            phone="11999998888",
+            password="Admin123!",
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        user_service.get_user_plan(db_session, created_user.id)
+
+    assert exc_info.value.status_code == 404
+    assert "nao possui plano" in exc_info.value.detail
 
 
 def test_admin_cannot_delete_own_account():

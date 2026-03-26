@@ -62,6 +62,35 @@ def test_users_me_returns_authenticated_user(client, user_token, regular_user):
     assert response.json()["email"] == regular_user.email
 
 
+def test_users_me_plan_returns_active_plan(client, admin_token, user_token, regular_user):
+    """Entrega um endpoint dedicado ao plano do usuario autenticado."""
+    create_plan_response = client.post(
+        "/plans/",
+        json={"name": "Fibra 800", "price": 179.9, "speed": 800},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert create_plan_response.status_code == 201
+    plan_id = create_plan_response.json()["id"]
+
+    subscribe_response = client.post(
+        f"/users/{regular_user.id}/subscribe",
+        json={"plan_id": plan_id},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert subscribe_response.status_code == 200
+
+    response = client.get(
+        "/users/me/plan",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["user_id"] == regular_user.id
+    assert payload["plan"]["id"] == plan_id
+    assert payload["plan"]["speed"] == 800
+
+
 def test_regular_user_cannot_list_users(client, user_token):
     """Impede que usuario comum acesse listagem administrativa de usuarios."""
     response = client.get(
@@ -70,6 +99,7 @@ def test_regular_user_cannot_list_users(client, user_token):
     )
 
     assert response.status_code == 403
+    assert response.json()["code"] == "acesso_negado"
 
 
 def test_admin_can_list_users_with_filters(client, admin_token, admin_user, regular_user):
@@ -170,8 +200,65 @@ def test_user_can_subscribe_to_plan(client, admin_token, user_token, regular_use
     assert payload["user"]["plan_id"] == plan_id
 
 
+def test_user_can_cancel_subscription(client, admin_token, user_token, regular_user):
+    """Permite cancelar o plano ja vinculado ao usuario autenticado."""
+    create_plan_response = client.post(
+        "/plans/",
+        json={"name": "Fibra 900", "price": 199.9, "speed": 900},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert create_plan_response.status_code == 201
+    plan_id = create_plan_response.json()["id"]
+
+    subscribe_response = client.post(
+        f"/users/{regular_user.id}/subscribe",
+        json={"plan_id": plan_id},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert subscribe_response.status_code == 200
+
+    cancel_response = client.delete(
+        f"/users/{regular_user.id}/subscribe",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+
+    assert cancel_response.status_code == 200
+    payload = cancel_response.json()
+    assert payload["message"] == "Plano cancelado com sucesso"
+    assert payload["user"]["plan_id"] is None
+
+
+def test_admin_can_view_stats(client, admin_token, admin_user, regular_user):
+    """Expone metricas administrativas consolidadas da base."""
+    response = client.get(
+        "/admin/stats",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_users"] >= 2
+    assert payload["total_admins"] >= 1
+    assert payload["users_without_plan"] >= 1
+
+
 def test_invalid_plan_filter_range_returns_400(client):
     """Rejeita filtros incoerentes antes de consultar o banco."""
     response = client.get("/plans/", params={"min_price": 200, "max_price": 100})
 
     assert response.status_code == 400
+    assert response.json()["code"] == "requisicao_invalida"
+
+
+def test_validation_errors_return_code_and_error_list(client):
+    """Padroniza erros de validacao com codigo legivel pelo frontend."""
+    response = client.post(
+        "/users/",
+        json={"name": "A", "email": "invalido", "phone": "123", "password": "fraca"},
+    )
+
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["code"] == "erro_validacao"
+    assert payload["detail"] == "Dados de entrada invalidos"
+    assert isinstance(payload["errors"], list)

@@ -1,6 +1,7 @@
 """Operacoes de persistencia relacionadas a usuarios e refresh tokens."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc, func, or_
+from sqlalchemy.orm import Session, joinedload
 
 from .. import models
 from ..security import hash_refresh_token
@@ -9,6 +10,16 @@ from ..security import hash_refresh_token
 def get_user_by_id(db: Session, user_id: int):
     """Busca um usuario pela chave primaria."""
     return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def get_user_by_id_with_plan(db: Session, user_id: int):
+    """Busca um usuario com o relacionamento de plano carregado."""
+    return (
+        db.query(models.User)
+        .options(joinedload(models.User.plan))
+        .filter(models.User.id == user_id)
+        .first()
+    )
 
 
 def get_user_by_email(db: Session, email: str):
@@ -33,8 +44,8 @@ def delete_user(db: Session, user: models.User):
     return user
 
 
-def update_user_plan(db: Session, user: models.User, plan_id: int):
-    """Vincula um plano ao usuario informado."""
+def update_user_plan(db: Session, user: models.User, plan_id: int | None):
+    """Atualiza o plano vinculado ao usuario, inclusive para cancelamento."""
     user.plan_id = plan_id
     db.commit()
     db.refresh(user)
@@ -57,6 +68,63 @@ def get_users_paginated(
     total = query.count()
     users = query.offset(offset).limit(limit).all()
     return users, total
+
+
+def get_users_advanced(
+    db: Session,
+    page: int,
+    limit: int,
+    search: str | None = None,
+    role: str | None = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+):
+    """Lista usuarios com filtros e ordenacao encapsulados no repository."""
+    query = db.query(models.User)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.User.name.ilike(search_term),
+                models.User.email.ilike(search_term),
+            )
+        )
+
+    if role:
+        query = query.filter(models.User.role == role)
+
+    sort_column = getattr(models.User, sort_by)
+    sort_function = desc if sort_order == "desc" else asc
+    query = query.order_by(sort_function(sort_column))
+
+    offset = (page - 1) * limit
+    total = query.count()
+    users = query.offset(offset).limit(limit).all()
+    return users, total
+
+
+def get_admin_stats(db: Session) -> dict[str, int]:
+    """Calcula metricas agregadas para o painel administrativo."""
+    total_users = db.query(func.count(models.User.id)).scalar() or 0
+    total_admins = (
+        db.query(func.count(models.User.id))
+        .filter(models.User.role == models.UserRole.ADMIN.value)
+        .scalar()
+        or 0
+    )
+    total_plans = db.query(func.count(models.Plan.id)).scalar() or 0
+    users_with_plan = (
+        db.query(func.count(models.User.id)).filter(models.User.plan_id.is_not(None)).scalar() or 0
+    )
+
+    return {
+        "total_users": int(total_users),
+        "total_admins": int(total_admins),
+        "total_plans": int(total_plans),
+        "users_with_plan": int(users_with_plan),
+        "users_without_plan": int(total_users - users_with_plan),
+    }
 
 
 def create_refresh_token(db: Session, token_data: dict):

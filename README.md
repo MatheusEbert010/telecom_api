@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
-![Testes](https://img.shields.io/badge/tests-29%20passing-2EA44F)
+![Testes](https://img.shields.io/badge/tests-35%20passing-2EA44F)
 
 API REST para gerenciamento de usuarios, autenticacao e planos de telecomunicacoes.
 
@@ -134,16 +134,22 @@ flowchart LR
 - `POST /users`
 - `GET /users`
 - `GET /users/me`
+- `GET /users/me/plan`
 - `GET /users/{user_id}`
 - `PUT /users/{user_id}`
 - `PATCH /users/{user_id}/role`
 - `DELETE /users/{user_id}`
 - `POST /users/{user_id}/subscribe`
+- `DELETE /users/{user_id}/subscribe`
 
 ### Planos
 
 - `POST /plans`
 - `GET /plans`
+
+### Administracao
+
+- `GET /admin/stats`
 
 ### Observabilidade
 
@@ -162,6 +168,19 @@ Observacao:
 4. Quando o `access_token` expira, o cliente chama `POST /auth/refresh`.
 5. O refresh token antigo e invalidado e um novo par de tokens e emitido.
 6. No logout, o refresh token e removido da base.
+
+## Contrato de Erro
+
+Os erros da API agora seguem um formato mais consistente para facilitar consumo no frontend:
+
+```json
+{
+  "code": "requisicao_invalida",
+  "detail": "Mensagem de erro"
+}
+```
+
+Em erros de validacao, a resposta tambem inclui `errors` com a lista detalhada dos campos rejeitados.
 
 ## Variaveis de Ambiente
 
@@ -402,6 +421,13 @@ Resposta esperada:
 
 ```bash
 curl http://127.0.0.1:8000/users/me \
+  -H "Authorization: Bearer SEU_ACCESS_TOKEN"
+```
+
+### Buscar plano do usuario autenticado
+
+```bash
+curl http://127.0.0.1:8000/users/me/plan \
   -H "Authorization: Bearer SEU_ACCESS_TOKEN"
 ```
 

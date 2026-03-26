@@ -48,6 +48,15 @@ def get_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/me/plan", response_model=schemas.UserPlanResponse)
+def get_my_plan(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retorna o plano atualmente associado ao usuario autenticado."""
+    return user_service.get_user_plan(db, current_user.id)
+
+
 @router.get("/{user_id}", response_model=schemas.UserResponse)
 def get_user(
     user_id: int = Path(..., gt=0),
@@ -123,3 +132,17 @@ def subscribe_plan(
 
     result = user_service.subscribe_plan(db, user_id, data.plan_id)
     return {"message": "Plano assinado com sucesso", "user": result}
+
+
+@router.delete("/{user_id}/subscribe", response_model=schemas.UserSubscriptionResponse)
+def cancel_subscription(
+    user_id: int = Path(..., gt=0),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancela o plano do proprio usuario ou de outro usuario via admin."""
+    if current_user.id != user_id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    result = user_service.cancel_plan_subscription(db, user_id)
+    return {"message": "Plano cancelado com sucesso", "user": result}
