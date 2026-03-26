@@ -11,8 +11,11 @@ from app.models import Base
 # Objeto principal de configuracao carregado do `alembic.ini`.
 config = context.config
 
-# Prioriza a URL do ambiente para funcionar em Docker, CI e execucao local.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+URL_PLACEHOLDER = "mysql+pymysql://usuario:senha@localhost/nome_do_banco"
+
+# Usa a URL da aplicacao quando o ini esta com placeholder, mas preserva overrides de teste.
+if config.get_main_option("sqlalchemy.url") == URL_PLACEHOLDER:
+    config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Inicializa logging do Alembic quando o arquivo de configuracao existe.
 if config.config_file_name is not None:

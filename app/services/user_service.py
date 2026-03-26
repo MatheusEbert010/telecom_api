@@ -34,6 +34,45 @@ def create_user(db: Session, user: schemas.UserCreate):
     return created_user
 
 
+def ensure_admin_user(
+    db: Session,
+    *,
+    name: str,
+    email: str,
+    password: str,
+    phone: str | None = None,
+):
+    """Cria ou promove um usuario para administrador de forma idempotente."""
+    validated_user = schemas.UserCreate(
+        name=name,
+        email=email,
+        phone=phone,
+        password=password,
+    )
+
+    existing_user = user_repository.get_user_by_email(db, validated_user.email)
+    if existing_user:
+        existing_user.name = validated_user.name
+        existing_user.phone = validated_user.phone
+        existing_user.password = _hash_password(validated_user.password)
+        existing_user.role = schemas.UserRole.ADMIN.value
+        db.commit()
+        db.refresh(existing_user)
+        cache.clear_pattern("users:list:*")
+        return existing_user, False
+
+    user_data = {
+        "name": validated_user.name,
+        "email": validated_user.email,
+        "phone": validated_user.phone,
+        "password": _hash_password(validated_user.password),
+        "role": schemas.UserRole.ADMIN.value,
+    }
+    created_user = user_repository.create_user(db, user_data)
+    cache.clear_pattern("users:list:*")
+    return created_user, True
+
+
 def update_user(db: Session, user_id: int, user_data: schemas.UserUpdate):
     """Atualiza dados do usuario sem permitir elevacao implicita de privilegio."""
     user = user_repository.get_user_by_id(db, user_id)

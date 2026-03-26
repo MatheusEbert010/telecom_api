@@ -15,6 +15,7 @@ Pendencias priorizadas para evolucao da Telecom API.
 - [x] Adicionar paginacao na listagem de planos.
 - [x] Adicionar log em arquivo rotativo da aplicacao.
 - [x] Endurecer o ambiente Docker local com MySQL configurado e backup basico.
+- [x] Adicionar script controlado para criar ou promover administrador local.
 
 ## Curto prazo
 

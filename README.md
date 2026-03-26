@@ -255,6 +255,16 @@ venv\Scripts\python.exe -m alembic upgrade head
 venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
+### 6. Criar ou promover um administrador local
+
+```powershell
+venv\Scripts\python.exe -m app.scripts.criar_admin `
+  --nome "Administrador Local" `
+  --email "admin@telecom.com" `
+  --senha "Admin123!" `
+  --telefone "11999990000"
+```
+
 API local:
 
 - `http://127.0.0.1:8000`
@@ -284,6 +294,15 @@ Fluxo sugerido para usar MySQL em Docker local:
 4. Defina `DATABASE_URL` apontando para `127.0.0.1:${MYSQL_PORT}` se for acessar o banco pelo host.
 5. Execute `docker-compose up -d --build`.
 6. Acompanhe os logs com `docker-compose logs -f api db db_backup`.
+7. Crie ou promova um administrador com:
+
+```powershell
+docker compose exec api python -m app.scripts.criar_admin `
+  --nome "Administrador Docker" `
+  --email "admin@telecom.com" `
+  --senha "Admin123!" `
+  --telefone "11999990000"
+```
 
 ## Qualidade e Testes
 

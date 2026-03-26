@@ -92,6 +92,48 @@ def test_admin_role_change_is_explicit(db_session):
     assert updated_user.role == schemas.UserRole.ADMIN.value
 
 
+def test_ensure_admin_user_creates_admin_when_email_does_not_exist(db_session):
+    """Permite bootstrap controlado de administrador sem passar pela API publica."""
+    admin_user, created = user_service.ensure_admin_user(
+        db_session,
+        name="Admin Bootstrap",
+        email="admin.bootstrap@example.com",
+        phone="11999990000",
+        password="Admin123!",
+    )
+
+    assert created is True
+    assert admin_user.role == schemas.UserRole.ADMIN.value
+    assert admin_user.email == "admin.bootstrap@example.com"
+
+
+def test_ensure_admin_user_promotes_existing_user_to_admin(db_session):
+    """Promove usuario existente para admin de forma idempotente."""
+    created_user = user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Usuario Comum",
+            email="comum@example.com",
+            phone="11999998888",
+            password="Admin123!",
+        ),
+    )
+
+    admin_user, created = user_service.ensure_admin_user(
+        db_session,
+        name="Usuario Promovido",
+        email="comum@example.com",
+        phone="11999997777",
+        password="NovaSenha123!",
+    )
+
+    assert created is False
+    assert admin_user.id == created_user.id
+    assert admin_user.name == "Usuario Promovido"
+    assert admin_user.phone == "11999997777"
+    assert admin_user.role == schemas.UserRole.ADMIN.value
+
+
 def test_users_me_route_is_registered_before_user_id_route():
     """Evita conflito de roteamento entre `/me` e `/{user_id}`."""
     user_routes = [
