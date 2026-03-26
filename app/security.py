@@ -5,7 +5,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 import bcrypt
-from jose import jwt
+from jose import JWTError, jwt
 
 from .config import settings
 from .time_utils import utc_now
@@ -52,7 +52,22 @@ def hash_refresh_token(token: str) -> str:
 
 def decode_token(token: str) -> dict:
     """Decodifica um JWT usando a chave secreta configurada."""
-    return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    return jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=[settings.algorithm],
+        issuer=settings.jwt_issuer,
+        audience=settings.jwt_audience,
+    )
+
+
+def decode_token_by_type(token: str, expected_token_type: str) -> dict:
+    """Decodifica o JWT e garante que ele seja do tipo esperado pela rota."""
+    payload = decode_token(token)
+    token_type = payload.get("token_type")
+    if token_type != expected_token_type:
+        raise JWTError("Tipo de token invalido para esta operacao")
+    return payload
 
 
 def create_access_token(data: dict):
@@ -61,7 +76,16 @@ def create_access_token(data: dict):
 
     issued_at = utc_now()
     expire = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode.update({"exp": expire, "iat": issued_at, "jti": uuid4().hex})
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": issued_at,
+            "jti": uuid4().hex,
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+            "token_type": "access",
+        }
+    )
 
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
@@ -72,6 +96,15 @@ def create_refresh_token(data: dict):
 
     issued_at = utc_now()
     expire = issued_at + timedelta(days=settings.refresh_token_expire_days)
-    to_encode.update({"exp": expire, "iat": issued_at, "jti": uuid4().hex})
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": issued_at,
+            "jti": uuid4().hex,
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+            "token_type": "refresh",
+        }
+    )
 
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)

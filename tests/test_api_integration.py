@@ -61,6 +61,24 @@ def test_login_refresh_and_logout_flow(client, regular_user):
     assert reused_refresh_response.status_code == 401
 
 
+def test_refresh_rejeita_access_token_no_fluxo_de_renovacao(client, regular_user):
+    """Impede que access token seja reutilizado no endpoint de refresh."""
+    login_response = client.post(
+        "/auth/login",
+        json={"email": regular_user.email, "password": "Admin123!"},
+    )
+
+    assert login_response.status_code == 200
+
+    refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": login_response.json()["access_token"]},
+    )
+
+    assert refresh_response.status_code == 401
+    assert refresh_response.json()["code"] == "nao_autorizado"
+
+
 def test_versioned_login_and_stats_flow(client, admin_user):
     """Valida o uso das rotas preferenciais em `/api/v1`."""
     login_response = client.post(
@@ -91,6 +109,24 @@ def test_users_me_returns_authenticated_user(client, user_token, regular_user):
 
     assert response.status_code == 200
     assert response.json()["email"] == regular_user.email
+
+
+def test_users_me_rejeita_refresh_token_como_credencial(client, regular_user):
+    """Bloqueia refresh token em rotas que exigem access token valido."""
+    login_response = client.post(
+        "/auth/login",
+        json={"email": regular_user.email, "password": "Admin123!"},
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.get(
+        "/users/me",
+        headers={"Authorization": f"Bearer {login_response.json()['refresh_token']}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "nao_autorizado"
 
 
 def test_users_me_plan_returns_active_plan(client, admin_token, user_token, regular_user):

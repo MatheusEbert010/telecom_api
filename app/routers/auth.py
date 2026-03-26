@@ -16,7 +16,7 @@ from ..security import (
     DUMMY_PASSWORD_HASH,
     create_access_token,
     create_refresh_token,
-    decode_token,
+    decode_token_by_type,
     verify_password,
 )
 from ..telecom_db import get_db
@@ -82,7 +82,7 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
 def refresh_token(data: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
     """Valida e rotaciona o refresh token antes de emitir novos tokens."""
     try:
-        payload = decode_token(data.refresh_token)
+        payload = decode_token_by_type(data.refresh_token, expected_token_type="refresh")
     except JWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

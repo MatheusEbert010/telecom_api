@@ -2,12 +2,12 @@
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jose import JWTError
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..config import settings
 from ..crud import user_repository
+from ..security import decode_token_by_type
 from ..telecom_db import get_db
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -28,7 +28,7 @@ def get_current_user(
         raise credentials_exception
 
     try:
-        payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=[settings.algorithm])
+        payload = decode_token_by_type(credentials.credentials, expected_token_type="access")
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception

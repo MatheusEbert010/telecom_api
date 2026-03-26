@@ -9,12 +9,13 @@ from pydantic import ValidationError
 
 from app import schemas
 from app.cache import Cache
+from app.config import settings
 from app.crud import user_repository
 from app.main import app
 from app.models import User
 from app.routers import plans as plans_router
 from app.routers import users as users_router
-from app.security import hash_refresh_token
+from app.security import create_access_token, create_refresh_token, decode_token, hash_refresh_token
 from app.services import plan_service, user_service
 from app.time_utils import utc_now_naive
 
@@ -271,6 +272,22 @@ def test_refresh_tokens_are_stored_hashed_and_support_lookup(db_session):
     assert stored_token.token == hash_refresh_token(raw_token)
     assert stored_token.token != raw_token
     assert user_repository.get_refresh_token(db_session, raw_token) is not None
+
+
+def test_access_and_refresh_tokens_include_claims_de_seguranca():
+    """Inclui `iss`, `aud` e `token_type` para endurecer o contrato do JWT."""
+    access_token = create_access_token({"sub": "admin@example.com"})
+    refresh_token = create_refresh_token({"sub": "admin@example.com"})
+
+    access_payload = decode_token(access_token)
+    refresh_payload = decode_token(refresh_token)
+
+    assert access_payload["iss"] == settings.jwt_issuer
+    assert access_payload["aud"] == settings.jwt_audience
+    assert access_payload["token_type"] == "access"
+    assert refresh_payload["iss"] == settings.jwt_issuer
+    assert refresh_payload["aud"] == settings.jwt_audience
+    assert refresh_payload["token_type"] == "refresh"
 
 
 def test_delete_refresh_token_accepts_raw_token(db_session):

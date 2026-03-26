@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # Seguranca da autenticacao.
     secret_key: str = Field(..., min_length=32)
     algorithm: str = "HS256"
+    jwt_issuer: str = "telecom-api"
+    jwt_audience: str = "telecom-api-clients"
     access_token_expire_minutes: int = Field(30, gt=0)
     refresh_token_expire_days: int = Field(7, gt=0)
 
