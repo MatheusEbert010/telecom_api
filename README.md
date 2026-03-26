@@ -45,7 +45,7 @@ Esta API permite:
 - aplicar controle de acesso por perfil (`user` e `admin`)
 - listar usuarios com busca, filtros, ordenacao e paginacao
 - criar e consultar planos
-- associar usuarios a planos
+- associar e cancelar planos de usuarios
 - expor um endpoint de saude para monitoramento
 
 ## Principais Diferenciais
@@ -60,7 +60,7 @@ Esta API permite:
 
 ## Tecnologias
 
-- Python 3.11+
+- Python 3.12+
 - FastAPI
 - SQLAlchemy
 - Alembic
@@ -498,10 +498,10 @@ O repositorio possui estrutura para testes manuais em [`postman/`](/c:/Users/MAT
 Fluxo sugerido:
 
 1. Importe a collection no Postman.
-2. Defina a variavel `base_url` como `http://127.0.0.1:8000`.
+2. Defina a variavel `base_url` como `http://127.0.0.1:8000/api/v1`.
 3. Execute o request de login.
 4. Copie os tokens retornados para as variaveis `access_token` e `refresh_token`.
-5. Use os requests autenticados para explorar usuarios e planos.
+5. Use os requests autenticados para explorar usuarios, planos e endpoints administrativos.
 
 ## CI
 
