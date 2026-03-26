@@ -73,6 +73,8 @@ Esta API permite:
 
 ## Arquitetura
 
+Organizacao principal da aplicacao:
+
 ```text
 telecom_api/
 |-- app/
@@ -103,15 +105,26 @@ telecom_api/
 ### Fluxo da Aplicacao
 
 ```mermaid
-flowchart LR
-    A[Cliente HTTP] --> B[Routers FastAPI]
-    B --> C[Services]
-    C --> D[CRUD / Repositories]
-    D --> E[(MySQL)]
-    C --> F[(Redis Cache)]
-    B --> G[Dependencias de Autenticacao]
-    G --> C
+flowchart TD
+    cliente["Cliente HTTP"] --> rotas["Routers FastAPI"]
+    rotas --> auth["Dependencias de autenticacao"]
+    rotas --> servicos["Services"]
+    auth --> servicos
+    servicos --> repositorios["CRUD e repositories"]
+    repositorios --> mysql["MySQL"]
+    servicos --> redis["Redis cache"]
 ```
+
+Leitura rapida da arquitetura:
+
+- `routers` recebem a requisicao HTTP e aplicam validacao de entrada
+- `dependencies` resolvem autenticacao e autorizacao antes da regra de negocio
+- `services` concentram as regras de negocio e a orquestracao
+- `crud` e `repositories` encapsulam o acesso ao banco
+- `cache.py` reduz leituras repetidas quando o Redis esta disponivel
+
+Se o Mermaid nao renderizar no seu preview, o fluxo acima pode ser lido como:
+`Cliente HTTP -> Routers FastAPI -> Services -> CRUD e repositories -> MySQL`, com autenticacao entrando antes das regras protegidas e Redis como apoio de cache.
 
 ## Seguranca Aplicada
 
@@ -166,12 +179,12 @@ As rotas sem prefixo continuam funcionando por compatibilidade, mas as rotas em 
 
 ## Fluxo de Autenticacao
 
-1. O usuario faz login em `POST /auth/login`.
+1. O usuario faz login em `POST /api/v1/auth/login`.
 2. A API retorna `access_token` e `refresh_token`.
 3. O `access_token` e usado nas rotas protegidas via header `Authorization: Bearer ...`.
-4. Quando o `access_token` expira, o cliente chama `POST /auth/refresh`.
+4. Quando o `access_token` expira, o cliente chama `POST /api/v1/auth/refresh`.
 5. O refresh token antigo e invalidado e um novo par de tokens e emitido.
-6. No logout, o refresh token e removido da base.
+6. No logout, o cliente chama `POST /api/v1/auth/logout` e o refresh token e removido da base.
 
 ## Versionamento da API
 
