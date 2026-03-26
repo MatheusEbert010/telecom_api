@@ -10,6 +10,8 @@ jobs:
   test:
     # Executa a esteira basica de qualidade em ambiente limpo.
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
 
     steps:
       - name: Checkout repository
@@ -30,4 +32,4 @@ jobs:
         run: ruff check app tests
 
       - name: Run tests
-        run: pytest
+        run: python -m pytest
