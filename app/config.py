@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Metadados da aplicacao.
     app_name: str = "Telecom API"
-    app_version: str = "1.1.0"
+    app_version: str = "1.2.0"
 
     # Seguranca da autenticacao.
     secret_key: str = Field(..., min_length=32)

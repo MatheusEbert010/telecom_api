@@ -13,6 +13,16 @@ def test_health_endpoint(client):
     assert payload["service"] == "telecom-api"
 
 
+def test_versioned_health_endpoint(client):
+    """Mantem o endpoint de saude tambem sob o prefixo versionado."""
+    response = client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "healthy"
+    assert payload["version"] == "1.2.0"
+
+
 def test_login_refresh_and_logout_flow(client, regular_user):
     """Valida o fluxo completo de login, refresh token e logout."""
     login_response = client.post(
@@ -49,6 +59,27 @@ def test_login_refresh_and_logout_flow(client, regular_user):
     )
 
     assert reused_refresh_response.status_code == 401
+
+
+def test_versioned_login_and_stats_flow(client, admin_user):
+    """Valida o uso das rotas preferenciais em `/api/v1`."""
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": admin_user.email, "password": "Admin123!"},
+    )
+
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    stats_response = client.get(
+        "/api/v1/admin/stats",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert stats_response.status_code == 200
+    payload = stats_response.json()
+    assert payload["total_users"] >= 1
+    assert payload["total_admins"] >= 1
 
 
 def test_users_me_returns_authenticated_user(client, user_token, regular_user):
@@ -262,3 +293,15 @@ def test_validation_errors_return_code_and_error_list(client):
     assert payload["code"] == "erro_validacao"
     assert payload["detail"] == "Dados de entrada invalidos"
     assert isinstance(payload["errors"], list)
+
+
+def test_versioned_users_me_plan_returns_not_found_without_subscription(client, user_token):
+    """Replica o contrato do endpoint dedicado tambem sob `/api/v1`."""
+    response = client.get(
+        "/api/v1/users/me/plan",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+
+    assert response.status_code == 404
+    payload = response.json()
+    assert payload["code"] == "recurso_nao_encontrado"

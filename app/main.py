@@ -2,7 +2,7 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,6 +14,7 @@ from .routers import admin, auth, plans, users
 from .time_utils import utc_now
 
 logger = setup_logging()
+api_v1_router = APIRouter(prefix="/api/v1")
 
 
 @asynccontextmanager
@@ -38,7 +39,8 @@ app = FastAPI(
 )
 
 
-@app.get("/health")
+@api_v1_router.get("/health", tags=["Observabilidade"])
+@app.get("/health", tags=["Observabilidade"], deprecated=True)
 async def health_check():
     """Retorna o estado basico da API para monitoramento externo."""
     return {
@@ -142,7 +144,14 @@ async def global_exception_handler(request, exc):
     )
 
 
-app.include_router(admin.router)
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(plans.router)
+def include_domain_routers(target, *, deprecated: bool = False) -> None:
+    """Registra os routers da aplicacao com politica opcional de obsolescencia."""
+    target.include_router(admin.router, deprecated=deprecated)
+    target.include_router(auth.router, deprecated=deprecated)
+    target.include_router(users.router, deprecated=deprecated)
+    target.include_router(plans.router, deprecated=deprecated)
+
+
+include_domain_routers(api_v1_router)
+app.include_router(api_v1_router)
+include_domain_routers(app, deprecated=True)

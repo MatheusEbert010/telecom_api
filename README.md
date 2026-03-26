@@ -11,6 +11,8 @@ API REST para gerenciamento de usuarios, autenticacao e planos de telecomunicaco
 
 O projeto foi construido com foco em fundamentos que pesam bastante em backend profissional: separacao por camadas, validacao forte de entrada, RBAC, migrations com Alembic, cache opcional com Redis, testes automatizados e CI no GitHub Actions.
 
+O caminho preferencial da API agora e `/api/v1`, mantendo as rotas legadas sem prefixo por compatibilidade durante a transicao.
+
 ## Sumario
 
 - [Visao Geral](#visao-geral)
@@ -20,6 +22,7 @@ O projeto foi construido com foco em fundamentos que pesam bastante em backend p
 - [Seguranca Aplicada](#seguranca-aplicada)
 - [Rotas Principais](#rotas-principais)
 - [Fluxo de Autenticacao](#fluxo-de-autenticacao)
+- [Versionamento da API](#versionamento-da-api)
 - [Variaveis de Ambiente](#variaveis-de-ambiente)
 - [Como Rodar Localmente](#como-rodar-localmente)
 - [Rodando com Docker](#rodando-com-docker)
@@ -125,40 +128,41 @@ flowchart LR
 
 ### Autenticacao
 
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /auth/logout`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
 
 ### Usuarios
 
-- `POST /users`
-- `GET /users`
-- `GET /users/me`
-- `GET /users/me/plan`
-- `GET /users/{user_id}`
-- `PUT /users/{user_id}`
-- `PATCH /users/{user_id}/role`
-- `DELETE /users/{user_id}`
-- `POST /users/{user_id}/subscribe`
-- `DELETE /users/{user_id}/subscribe`
+- `POST /api/v1/users`
+- `GET /api/v1/users`
+- `GET /api/v1/users/me`
+- `GET /api/v1/users/me/plan`
+- `GET /api/v1/users/{user_id}`
+- `PUT /api/v1/users/{user_id}`
+- `PATCH /api/v1/users/{user_id}/role`
+- `DELETE /api/v1/users/{user_id}`
+- `POST /api/v1/users/{user_id}/subscribe`
+- `DELETE /api/v1/users/{user_id}/subscribe`
 
 ### Planos
 
-- `POST /plans`
-- `GET /plans`
+- `POST /api/v1/plans`
+- `GET /api/v1/plans`
 
 ### Administracao
 
-- `GET /admin/stats`
+- `GET /api/v1/admin/stats`
 
 ### Observabilidade
 
-- `GET /health`
+- `GET /api/v1/health`
 - `GET /docs`
 - `GET /redoc`
 
 Observacao:
 `/docs` e `/redoc` ficam desabilitados quando `ENVIRONMENT=production`.
+As rotas sem prefixo continuam funcionando por compatibilidade, mas as rotas em `/api/v1` sao a interface recomendada daqui para frente.
 
 ## Fluxo de Autenticacao
 
@@ -168,6 +172,14 @@ Observacao:
 4. Quando o `access_token` expira, o cliente chama `POST /auth/refresh`.
 5. O refresh token antigo e invalidado e um novo par de tokens e emitido.
 6. No logout, o refresh token e removido da base.
+
+## Versionamento da API
+
+O projeto passou a expor um prefixo estavel em `/api/v1`.
+
+- use `/api/v1` para novas integracoes
+- mantenha as rotas antigas apenas como transicao
+- no Swagger, as rotas legadas aparecem como obsoletas para sinalizar a migracao gradual
 
 ## Contrato de Erro
 
@@ -297,6 +309,7 @@ API local:
 
 - `http://127.0.0.1:8000`
 - `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/api/v1/health`
 
 ## Rodando com Docker
 
@@ -402,6 +415,24 @@ Cobertura atual de qualidade:
 ### Login
 
 ```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"admin@example.com\",\"password\":\"Admin123!\"}"
+```
+
+Resposta esperada:
+
+```json
+{
+  "access_token": "jwt_aqui",
+  "refresh_token": "jwt_aqui",
+  "token_type": "bearer"
+}
+```
+
+### Login legado ainda compativel
+
+```bash
 curl -X POST http://127.0.0.1:8000/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"admin@example.com\",\"password\":\"Admin123!\"}"
@@ -420,6 +451,13 @@ Resposta esperada:
 ### Buscar usuario autenticado
 
 ```bash
+curl http://127.0.0.1:8000/api/v1/users/me \
+  -H "Authorization: Bearer SEU_ACCESS_TOKEN"
+```
+
+### Buscar usuario autenticado em rota legada
+
+```bash
 curl http://127.0.0.1:8000/users/me \
   -H "Authorization: Bearer SEU_ACCESS_TOKEN"
 ```
@@ -427,14 +465,14 @@ curl http://127.0.0.1:8000/users/me \
 ### Buscar plano do usuario autenticado
 
 ```bash
-curl http://127.0.0.1:8000/users/me/plan \
+curl http://127.0.0.1:8000/api/v1/users/me/plan \
   -H "Authorization: Bearer SEU_ACCESS_TOKEN"
 ```
 
 ### Criar plano como administrador
 
 ```bash
-curl -X POST http://127.0.0.1:8000/plans \
+curl -X POST http://127.0.0.1:8000/api/v1/plans \
   -H "Authorization: Bearer SEU_ACCESS_TOKEN_ADMIN" \
   -H "Content-Type: application/json" \
   -d "{\"name\":\"Fibra 600\",\"price\":129.9,\"speed\":600}"
