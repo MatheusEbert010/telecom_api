@@ -1,4 +1,4 @@
-"""Add role column to users table
+"""Adiciona coluna de papel na tabela de usuarios
 
 Revision ID: 9bdf7d22c4ec
 Revises: cffc3827488b
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
+# Identificadores da revisao usados pelo Alembic.
 revision: str = "9bdf7d22c4ec"
 down_revision: str | Sequence[str] | None = "cffc3827488b"
 branch_labels: str | Sequence[str] | None = None

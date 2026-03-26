@@ -1,4 +1,4 @@
-"""Initial migration
+"""Migration inicial
 
 Revision ID: cffc3827488b
 Revises:
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-# revision identifiers, used by Alembic.
+# Identificadores da revisao usados pelo Alembic.
 revision: str = "cffc3827488b"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None

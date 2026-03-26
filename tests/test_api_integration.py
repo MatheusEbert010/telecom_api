@@ -89,6 +89,20 @@ def test_admin_can_list_users_with_filters(client, admin_token, admin_user, regu
     assert all("password" not in user for user in payload["data"])
 
 
+def test_cors_allows_patch_preflight_for_role_update(client):
+    """Garante preflight valido para rotas PATCH usadas pelo frontend."""
+    response = client.options(
+        "/users/1/role",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "PATCH",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "PATCH" in response.headers["access-control-allow-methods"]
+
+
 def test_admin_can_change_user_role(client, admin_token, regular_user):
     """Permite a troca explicita de papel apenas pelo fluxo administrativo."""
     response = client.patch(
@@ -127,7 +141,10 @@ def test_admin_can_create_plan_and_user_can_list_it(client, admin_token):
 
     assert list_response.status_code == 200
     payload = list_response.json()
+    assert payload["page"] == 1
+    assert payload["limit"] == 10
     assert payload["total"] >= 1
+    assert payload["total_pages"] >= 1
     assert any(plan["name"] == "Fibra 600" for plan in payload["data"])
 
 

@@ -1,13 +1,14 @@
 """Rotas HTTP relacionadas ao catalogo e assinatura de planos."""
 
+from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..dependencies.auth_dependency import get_current_admin, get_current_user
-from ..services import plan_service, user_service
+from ..dependencies.auth_dependency import get_current_admin
+from ..services import plan_service
 from ..telecom_db import get_db
 
 router = APIRouter(prefix="/plans", tags=["Planos"])
@@ -25,11 +26,13 @@ def create_plan(
 
 @router.get("/", response_model=schemas.PlanListResponse)
 def list_plans(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     search: str | None = Query(None, min_length=2, max_length=100),
     min_speed: int | None = Query(None, gt=0),
     max_speed: int | None = Query(None, gt=0),
-    min_price: float | None = Query(None, gt=0),
-    max_price: float | None = Query(None, gt=0),
+    min_price: Decimal | None = Query(None, gt=0),
+    max_price: Decimal | None = Query(None, gt=0),
     sort_by: Literal["name", "price", "speed"] = "price",
     sort_order: Literal["asc", "desc"] = "asc",
     db: Session = Depends(get_db),
@@ -43,6 +46,8 @@ def list_plans(
 
     return plan_service.list_plans_advanced(
         db=db,
+        page=page,
+        limit=limit,
         search=search,
         min_speed=min_speed,
         max_speed=max_speed,
@@ -51,17 +56,3 @@ def list_plans(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-
-
-@router.post("/{user_id}/subscribe", response_model=schemas.UserResponse)
-def subscribe_plan(
-    data: schemas.SubscribePlan,
-    user_id: int = Path(..., gt=0),
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Permite assinar um plano usando o recurso de usuarios."""
-    if current_user.id != user_id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
-
-    return user_service.subscribe_plan(db, user_id, data.plan_id)

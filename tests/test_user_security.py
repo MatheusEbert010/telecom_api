@@ -123,7 +123,7 @@ def test_auth_and_plan_routes_use_safe_response_models():
     assert routes["/auth/refresh"].response_model is schemas.TokenResponse
     assert routes["/auth/logout"].response_model is schemas.MessageResponse
     assert routes["/plans/"].response_model is schemas.PlanListResponse
-    assert routes["/plans/{user_id}/subscribe"].response_model is schemas.UserResponse
+    assert "/plans/{user_id}/subscribe" not in routes
 
 
 def test_admin_cannot_delete_own_account():
@@ -198,6 +198,34 @@ def test_delete_refresh_token_accepts_raw_token(db_session):
     deleted = user_repository.delete_refresh_token(db_session, raw_token)
 
     assert deleted is not None
+    assert user_repository.get_refresh_token(db_session, raw_token) is None
+
+
+def test_delete_user_also_removes_refresh_tokens(db_session):
+    """Evita tokens orfaos ao remover usuario em bancos relacionais como MySQL."""
+    created_user = user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Matheus Ebert",
+            email="matheus@example.com",
+            phone="11999998888",
+            password="Admin123!",
+        ),
+    )
+
+    raw_token = "sample-refresh-token-very-secure"
+    user_repository.create_refresh_token(
+        db_session,
+        {
+            "token": raw_token,
+            "user_id": created_user.id,
+            "expires_at": utc_now_naive() + timedelta(days=1),
+        },
+    )
+
+    deleted_user = user_service.delete_user(db_session, created_user.id)
+
+    assert deleted_user is not None
     assert user_repository.get_refresh_token(db_session, raw_token) is None
 
 
@@ -276,3 +304,31 @@ def test_cache_serializes_sqlalchemy_models():
 
     assert result is True
     assert '"email": "matheus@example.com"' in cache_instance.redis_client.last_value
+
+
+def test_cache_clear_pattern_uses_scan_iter():
+    """Evita o uso de KEYS para limpar cache em ambiente maior."""
+
+    class DummyRedis:
+        """Duble minimo do Redis para capturar a estrategia de limpeza."""
+
+        def __init__(self):
+            self.deleted_keys = ()
+
+        def scan_iter(self, match):
+            assert match == "users:list:*"
+            yield "users:list:1"
+            yield "users:list:2"
+
+        def delete(self, *keys):
+            self.deleted_keys = keys
+            return len(keys)
+
+    cache_instance = Cache.__new__(Cache)
+    cache_instance.enabled = True
+    cache_instance.redis_client = DummyRedis()
+
+    result = cache_instance.clear_pattern("users:list:*")
+
+    assert result is True
+    assert cache_instance.redis_client.deleted_keys == ("users:list:1", "users:list:2")

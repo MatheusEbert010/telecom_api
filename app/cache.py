@@ -81,10 +81,9 @@ class Cache:
             return False
 
         try:
-            keys = self.redis_client.keys(pattern)
+            keys = list(self.redis_client.scan_iter(match=pattern))
             if keys:
-                if isinstance(keys, list) and keys:
-                    self.redis_client.delete(*keys)
+                self.redis_client.delete(*keys)
                 return True
             return True
         except Exception as e:

@@ -2,7 +2,7 @@
 
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from .telecom_db import Base
@@ -31,6 +31,11 @@ class User(Base):
     created_at = Column(DateTime, default=utc_now_naive)
     plan_id = Column(Integer, ForeignKey("plans.id"))
     plan = relationship("Plan", back_populates="users")
+    refresh_tokens = relationship(
+        "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class Plan(Base):
@@ -40,7 +45,7 @@ class Plan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
     speed = Column(Integer)
     users = relationship("User", back_populates="plan")
 
@@ -52,8 +57,8 @@ class RefreshToken(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String(500), unique=True, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     # Mantem compatibilidade com colunas sem timezone explicito.
     created_at = Column(DateTime, default=utc_now_naive)
-    user = relationship("User")
+    user = relationship("User", back_populates="refresh_tokens")

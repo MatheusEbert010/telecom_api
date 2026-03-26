@@ -1,9 +1,10 @@
 """Schemas Pydantic usados para entrada, saida e validacao da API."""
 
+from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
 
 
 class UserRole(str, Enum):
@@ -128,8 +129,13 @@ class PlanCreate(StrictSchema):
     """Payload de criacao de plano."""
 
     name: str = Field(..., min_length=3, max_length=100)
-    price: float = Field(..., gt=0)
+    price: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
     speed: int = Field(..., gt=0)
+
+    @field_serializer("price")
+    def serialize_price(self, value: Decimal) -> float:
+        """Mantem preco como numero na resposta JSON."""
+        return float(value)
 
 
 class PlanResponse(PlanCreate):
@@ -146,16 +152,24 @@ class PlanListFilters(StrictSchema):
     search: str | None = None
     min_speed: int | None = None
     max_speed: int | None = None
-    min_price: float | None = None
-    max_price: float | None = None
+    min_price: Decimal | None = None
+    max_price: Decimal | None = None
     sort_by: Literal["name", "price", "speed"]
     sort_order: Literal["asc", "desc"]
+
+    @field_serializer("min_price", "max_price")
+    def serialize_optional_prices(self, value: Decimal | None) -> float | None:
+        """Evita que Decimal saia como string nos filtros ecoados pela API."""
+        return float(value) if value is not None else None
 
 
 class PlanListResponse(StrictSchema):
     """Resposta paginada simplificada para listagem de planos."""
 
+    page: int
+    limit: int
     total: int
+    total_pages: int
     data: list[PlanResponse]
     filters: PlanListFilters
 

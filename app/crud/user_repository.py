@@ -27,6 +27,7 @@ def create_user(db: Session, user_data: dict):
 
 def delete_user(db: Session, user: models.User):
     """Remove um usuario existente do banco."""
+    delete_refresh_tokens_by_user_id(db, user.id)
     db.delete(user)
     db.commit()
     return user
@@ -94,3 +95,12 @@ def delete_refresh_token(db: Session, token: str):
         db.commit()
 
     return db_token
+
+
+def delete_refresh_tokens_by_user_id(db: Session, user_id: int) -> int:
+    """Remove todos os refresh tokens associados a um usuario."""
+    deleted_rows = (
+        db.query(models.RefreshToken).filter(models.RefreshToken.user_id == user_id).delete()
+    )
+    db.commit()
+    return int(deleted_rows)

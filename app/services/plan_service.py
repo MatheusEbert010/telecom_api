@@ -1,5 +1,7 @@
 """Regras de negocio relacionadas ao catalogo e consulta de planos."""
 
+from decimal import Decimal
+
 from fastapi import HTTPException
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
@@ -22,22 +24,30 @@ def create_plan(db: Session, plan: schemas.PlanCreate):
 
 def list_plans_advanced(
     db: Session,
+    page: int = 1,
+    limit: int = 10,
     search: str | None = None,
     min_speed: int | None = None,
     max_speed: int | None = None,
-    min_price: float | None = None,
-    max_price: float | None = None,
+    min_price: Decimal | None = None,
+    max_price: Decimal | None = None,
     sort_by: str = "price",
     sort_order: str = "asc",
 ):
     """Lista planos com filtros de busca, preco, velocidade e ordenacao."""
     cache_key = (
-        f"plans:list:{search}:{min_speed}:{max_speed}:{min_price}:{max_price}:{sort_by}:{sort_order}"
+        "plans:list:"
+        f"{page}:{limit}:{search}:{min_speed}:{max_speed}:{min_price}:{max_price}:{sort_by}:{sort_order}"
     )
 
     cached_result = cache.get(cache_key)
     if cached_result:
         return cached_result
+
+    if page < 1:
+        page = 1
+    if limit < 1 or limit > 100:
+        limit = 10
 
     query = db.query(models.Plan)
 
@@ -55,9 +65,14 @@ def list_plans_advanced(
     sort_column = getattr(models.Plan, sort_by)
     query = query.order_by(desc(sort_column) if sort_order == "desc" else asc(sort_column))
 
-    plans = query.all()
+    offset = (page - 1) * limit
+    total = query.count()
+    plans = query.offset(offset).limit(limit).all()
     result = {
-        "total": len(plans),
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (total + limit - 1) // limit,
         "data": plans,
         "filters": {
             "search": search,
