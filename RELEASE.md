@@ -12,7 +12,7 @@ Crie uma tag apenas quando:
 
 ## Passo a passo recomendado
 
-### 1. Revisar o estado do repositório
+### 1. Revisar o estado do repositorio
 
 ```powershell
 git status
@@ -25,33 +25,24 @@ venv\Scripts\python.exe -m ruff check app tests alembic
 venv\Scripts\python.exe -m pytest
 ```
 
-### 3. Criar commit da release
-
-Exemplo:
+### 3. Criar tag anotada
 
 ```powershell
-git add .
-git commit -m "Prepare release v1.0.0"
+git tag -a v1.2.0 -m "Release v1.2.0"
 ```
 
-### 4. Criar tag anotada
-
-```powershell
-git tag -a v1.0.0 -m "Release v1.0.0"
-```
-
-### 5. Enviar branch e tag
+### 4. Enviar branch e tag
 
 ```powershell
 git push origin main
-git push origin v1.0.0
+git push origin v1.2.0
 ```
 
-### 6. Publicar release no GitHub
+### 5. Publicar release no GitHub
 
 Ao abrir a tela de Releases no GitHub:
 
-- escolha a tag `v1.0.0`
+- escolha a tag `v1.2.0`
 - use o `CHANGELOG.md` como base das notas
 - revise o titulo e a descricao
 - publique a release
@@ -61,4 +52,5 @@ Ao abrir a tela de Releases no GitHub:
 - `v1.0.0` para primeira release estavel
 - `v1.0.1` para correcoes
 - `v1.1.0` para novas funcionalidades compativeis
+- `v1.2.0` para novas funcionalidades compativeis adicionais, como versionamento de rotas
 - `v2.0.0` para mudancas quebrando compatibilidade

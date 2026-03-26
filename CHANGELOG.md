@@ -4,35 +4,33 @@ Todas as mudancas relevantes deste projeto serao documentadas aqui.
 
 Este arquivo segue a ideia do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e utiliza versionamento semantico.
 
-## [Unreleased]
+## [1.2.0] - 2026-03-26
 
 ### Added
 
-- Estrutura de testes com `pytest`, incluindo testes de seguranca, integracao HTTP e migrations.
-- Pipeline de CI no GitHub Actions para executar lint e testes automaticamente.
-- Collection inicial do Postman para explorar os principais fluxos da API.
-- Camada de servicos para planos, reduzindo acoplamento dos routers.
-- Helpers centralizados para datas em UTC.
-- Documentacao interna com docstrings e comentarios concisos em portugues.
+- Prefixo preferencial `/api/v1` para auth, usuarios, planos, administracao e health, mantendo compatibilidade com as rotas legadas.
+- Endpoint `GET /users/me/plan` para consulta dedicada do plano do usuario autenticado.
+- Endpoint `DELETE /users/{user_id}/subscribe` para cancelamento de assinatura.
+- Endpoint `GET /admin/stats` com metricas administrativas consolidadas.
+- Script de bootstrap local para subir Docker e criar administrador com um unico comando.
 
 ### Changed
 
-- README reestruturado para refletir a arquitetura, o fluxo de autenticacao, os exemplos de uso e a estrategia de qualidade do projeto.
-- Routers reorganizados para usar `response_model` seguros e validacoes mais claras.
-- Fluxo de autenticacao endurecido com rotacao de refresh token.
-- Projeto preparado para lint com Ruff e configuracao central em `pyproject.toml`.
-- Migrations revisadas para funcionar corretamente em banco limpo.
+- Contrato de erro padronizado com `code` e `detail`, incluindo lista `errors` nas falhas de validacao.
+- Query avancada de usuarios movida para o repository para reduzir acoplamento no service.
+- `Plan.speed` passou a ser obrigatorio tambem no banco de dados.
+- Indices adicionados em `users.role` e `users.plan_id` para melhorar filtros e contagens.
+- Documentacao atualizada para refletir a versao `1.2.0`, o novo prefixo e os endpoints recentes.
 
 ### Security
 
-- Bloqueada a escalada de privilegio no cadastro e na atualizacao comum de usuarios.
-- Persistencia de refresh tokens alterada para hash em vez de texto puro.
-- Middleware e respostas revisados para reduzir exposicao de informacoes sensiveis.
-- Regras de RBAC reforcadas em usuarios, auth e planos.
+- Rotas legadas mantidas como compatibilidade e marcadas como obsoletas na documentacao para orientar a migracao.
 
-### Fixed
+### Infra
 
-- Correcao do conflito de rota entre `/users/me` e `/{user_id}`.
-- Correcao da serializacao de objetos ORM no cache.
-- Correcao de warnings de `utcnow` com normalizacao para UTC.
-- Correcao do bootstrap do Alembic e da cadeia de migrations.
+- Stack Docker validada com MySQL local em container, incluindo migrations aplicadas ate `head`.
+- Backup local e logs em arquivo mantidos como parte do fluxo de ambiente.
+
+## [Unreleased]
+
+- Espaco reservado para as proximas mudancas.
