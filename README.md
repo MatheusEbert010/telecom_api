@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
-![Testes](https://img.shields.io/badge/tests-27%20passing-2EA44F)
+![Testes](https://img.shields.io/badge/tests-29%20passing-2EA44F)
 
 API REST para gerenciamento de usuarios, autenticacao e planos de telecomunicacoes.
 
@@ -23,6 +23,7 @@ O projeto foi construido com foco em fundamentos que pesam bastante em backend p
 - [Variaveis de Ambiente](#variaveis-de-ambiente)
 - [Como Rodar Localmente](#como-rodar-localmente)
 - [Rodando com Docker](#rodando-com-docker)
+- [Primeiros Passos com Docker](#primeiros-passos-com-docker)
 - [Qualidade e Testes](#qualidade-e-testes)
 - [Exemplos de Uso](#exemplos-de-uso)
 - [Postman](#postman)
@@ -191,6 +192,10 @@ Variaveis principais:
 - `LOG_TO_FILE`: habilita ou desabilita escrita em arquivo
 - `BACKUP_INTERVAL_HOURS`: intervalo entre backups automaticos do MySQL em Docker
 - `BACKUP_RETENTION_DAYS`: quantidade de dias mantida para os arquivos de backup
+- `ADMIN_BOOTSTRAP_NOME`: nome usado pelo script de bootstrap do administrador em Docker
+- `ADMIN_BOOTSTRAP_EMAIL`: email usado pelo script de bootstrap do administrador em Docker
+- `ADMIN_BOOTSTRAP_SENHA`: senha usada pelo script de bootstrap do administrador em Docker
+- `ADMIN_BOOTSTRAP_TELEFONE`: telefone usado pelo script de bootstrap do administrador em Docker
 
 Exemplo:
 
@@ -218,6 +223,10 @@ LOG_FILE_NAME=telecom_api.log
 LOG_TO_FILE=true
 BACKUP_INTERVAL_HOURS=24
 BACKUP_RETENTION_DAYS=7
+ADMIN_BOOTSTRAP_NOME=Administrador Docker
+ADMIN_BOOTSTRAP_EMAIL=admin@telecom.com
+ADMIN_BOOTSTRAP_SENHA=troque_esta_senha_do_admin
+ADMIN_BOOTSTRAP_TELEFONE=11999990000
 ```
 
 ## Como Rodar Localmente
@@ -302,6 +311,44 @@ docker compose exec api python -m app.scripts.criar_admin `
   --email "admin@telecom.com" `
   --senha "Admin123!" `
   --telefone "11999990000"
+```
+
+## Primeiros Passos com Docker
+
+Se quiser reduzir o setup manual, o projeto agora possui um bootstrap unico em PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_docker_local.ps1
+```
+
+O script faz o seguinte:
+
+1. le as configuracoes do `.env`
+2. executa `docker compose up -d --build`
+3. aguarda a API responder em `/health`
+4. cria ou promove o administrador configurado no `.env`
+
+Variaveis opcionais para esse fluxo no [`.env.example`](/c:/Users/MATHEUS-PC/telecom_api/.env.example):
+
+- `ADMIN_BOOTSTRAP_NOME`
+- `ADMIN_BOOTSTRAP_EMAIL`
+- `ADMIN_BOOTSTRAP_SENHA`
+- `ADMIN_BOOTSTRAP_TELEFONE`
+
+Exemplo de uso passando os dados do admin pela linha de comando:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_docker_local.ps1 `
+  -EmailAdmin "admin@telecom.com" `
+  -SenhaAdmin "Admin123!" `
+  -NomeAdmin "Administrador Docker" `
+  -TelefoneAdmin "11999990000"
+```
+
+Se quiser apenas subir os containers, sem criar administrador:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_docker_local.ps1 -SemAdmin
 ```
 
 ## Qualidade e Testes
