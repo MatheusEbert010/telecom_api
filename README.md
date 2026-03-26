@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
-![Testes](https://img.shields.io/badge/tests-35%20passing-2EA44F)
+![Testes](https://img.shields.io/badge/tests-42%20passing-2EA44F)
 
 API REST para gerenciamento de usuarios, autenticacao e planos de telecomunicacoes.
 
@@ -56,7 +56,7 @@ Esta API permite:
 - respostas tipadas com `response_model`, evitando vazamento de campos sensiveis
 - cache opcional com fallback seguro quando o Redis nao esta disponivel
 - migrations validadas por teste automatizado em banco limpo
-- pipeline de CI rodando lint e testes
+- pipeline de CI com lint, testes, auditoria de dependencias, build Docker e integracao com MySQL
 
 ## Tecnologias
 
@@ -132,6 +132,7 @@ Se o Mermaid nao renderizar no seu preview, o fluxo acima pode ser lido como:
 - troca de papel acontece apenas por `PATCH /users/{user_id}/role`
 - `GET /users/me` fica protegido contra conflito de rota com `/{user_id}`
 - refresh tokens sao persistidos em hash
+- JWTs carregam `iss`, `aud` e `token_type` para reduzir uso indevido entre fluxos
 - logout e refresh invalidam e rotacionam tokens corretamente
 - rotas sensiveis usam RBAC com dependencias especificas
 - respostas de usuario nunca retornam hash de senha
@@ -215,6 +216,8 @@ Variaveis principais:
 
 - `SECRET_KEY`: chave usada para assinar JWTs
 - `ALGORITHM`: algoritmo do JWT, por padrao `HS256`
+- `JWT_ISSUER`: emissor esperado nos JWTs da aplicacao
+- `JWT_AUDIENCE`: audiencia esperada nos JWTs emitidos pela API
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: expiracao do access token
 - `REFRESH_TOKEN_EXPIRE_DAYS`: expiracao do refresh token
 - `DATABASE_URL`: string de conexao do banco
@@ -246,6 +249,8 @@ Exemplo:
 ```env
 SECRET_KEY=replace_with_a_secret_key_that_has_at_least_32_chars
 ALGORITHM=HS256
+JWT_ISSUER=telecom-api
+JWT_AUDIENCE=telecom-api-clients
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 DATABASE_URL=mysql+pymysql://user:password@localhost/database_name
@@ -420,8 +425,11 @@ Cobertura atual de qualidade:
 
 - testes de seguranca
 - testes de integracao HTTP
+- testes de integracao com MySQL real
 - teste de upgrade e downgrade das migrations
 - CI com GitHub Actions em push para `main` e em `pull_request`
+- auditoria automatica de dependencias com `pip-audit`
+- validacao de build das imagens Docker da API e do MySQL customizado
 
 ## Exemplos de Uso
 
@@ -519,6 +527,10 @@ O pipeline esta configurado em [ci.yml](/c:/Users/MATHEUS-PC/telecom_api/.github
 - instalacao de dependencias
 - lint com Ruff
 - testes com Pytest
+- auditoria de vulnerabilidades nas dependencias Python com `pip-audit`
+- build da imagem principal da API
+- build da imagem customizada do MySQL
+- migrations e testes de integracao contra MySQL real e Redis ativo
 
 ## Publicacoes
 
@@ -561,7 +573,7 @@ Proximos passos recomendados para continuar amadurecendo o projeto:
 - separar dominios em pacotes mais explicitos dentro de `app`
 - ampliar testes negativos e cenarios de concorrencia
 - adicionar observabilidade mais rica com logs estruturados
-- criar testes de integracao com MySQL real via Docker
+- adicionar varredura de seguranca para imagens Docker
 - evoluir a documentacao com diagramas de sequencia e exemplos reais de deploy
 
 ## Autor
