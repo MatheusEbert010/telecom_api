@@ -495,13 +495,22 @@ curl -X POST http://127.0.0.1:8000/api/v1/plans \
 
 O repositorio possui estrutura para testes manuais em [`postman/`](/c:/Users/MATHEUS-PC/telecom_api/postman) e agora inclui uma collection inicial em [telecom_api.collection.json](/c:/Users/MATHEUS-PC/telecom_api/postman/collections/telecom_api.collection.json).
 
+Para deixar o fluxo mais profissional e reaproveitavel, a collection agora:
+
+- usa `/api/v1` por padrao
+- salva `access_token` e `refresh_token` automaticamente apos login e refresh
+- captura `user_id` ao criar usuario ou consultar `/users/me`
+- captura `plan_id` ao criar plano
+- cobre endpoints importantes como `users/me/plan`, cancelamento de assinatura e `admin/stats`
+
 Fluxo sugerido:
 
 1. Importe a collection no Postman.
-2. Defina a variavel `base_url` como `http://127.0.0.1:8000/api/v1`.
-3. Execute o request de login.
-4. Copie os tokens retornados para as variaveis `access_token` e `refresh_token`.
-5. Use os requests autenticados para explorar usuarios, planos e endpoints administrativos.
+2. Importe tambem o ambiente [Telecom API Local.environment.yaml](/c:/Users/MATHEUS-PC/telecom_api/postman/environments/Telecom API Local.environment.yaml).
+3. Selecione o ambiente importado e ajuste credenciais e dados de exemplo se quiser.
+4. Execute `Login Admin` para carregar `access_token` e `refresh_token` automaticamente.
+5. Execute `Criar Usuario` e `Criar Plano` para popular `user_id` e `plan_id`.
+6. Use os requests autenticados para explorar usuarios, planos e endpoints administrativos sem preencher tudo manualmente.
 
 ## CI
 

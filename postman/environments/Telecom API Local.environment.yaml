@@ -1,0 +1,44 @@
+name: Telecom API Local
+values:
+  - key: base_url
+    value: http://127.0.0.1:8000/api/v1
+    enabled: true
+  - key: admin_email
+    value: admin@telecom.com
+    enabled: true
+  - key: admin_password
+    value: Admin123!
+    enabled: true
+  - key: user_name
+    value: Usuario Postman
+    enabled: true
+  - key: user_email
+    value: postman.user@example.com
+    enabled: true
+  - key: user_phone
+    value: "11999998888"
+    enabled: true
+  - key: user_password
+    value: Admin123!
+    enabled: true
+  - key: access_token
+    value: ""
+    enabled: true
+  - key: refresh_token
+    value: ""
+    enabled: true
+  - key: user_id
+    value: ""
+    enabled: true
+  - key: plan_name
+    value: Fibra 600
+    enabled: true
+  - key: plan_price
+    value: "129.90"
+    enabled: true
+  - key: plan_speed
+    value: "600"
+    enabled: true
+  - key: plan_id
+    value: ""
+    enabled: true

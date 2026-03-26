@@ -2,7 +2,7 @@
   "info": {
     "name": "Telecom API",
     "_postman_id": "d1bb0bf8-b433-43f0-a509-a94b459f7cdd",
-    "description": "Collection inicial para explorar os principais fluxos da Telecom API.",
+    "description": "Collection pronta para demonstrar os fluxos principais da Telecom API com variaveis e captura automatica de dados importantes.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -19,32 +19,90 @@
       "value": ""
     },
     {
+      "key": "admin_email",
+      "value": "admin@telecom.com"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!"
+    },
+    {
+      "key": "user_name",
+      "value": "Usuario Postman"
+    },
+    {
+      "key": "user_email",
+      "value": "postman.user@example.com"
+    },
+    {
+      "key": "user_phone",
+      "value": "11999998888"
+    },
+    {
+      "key": "user_password",
+      "value": "Admin123!"
+    },
+    {
       "key": "user_id",
-      "value": "1"
+      "value": ""
+    },
+    {
+      "key": "plan_name",
+      "value": "Fibra 600"
+    },
+    {
+      "key": "plan_price",
+      "value": "129.90"
+    },
+    {
+      "key": "plan_speed",
+      "value": "600"
+    },
+    {
+      "key": "plan_id",
+      "value": ""
     }
   ],
   "item": [
     {
-      "name": "Health",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/health",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "health"
+      "name": "Observabilidade",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Health responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
           ]
         }
-      }
+      ]
     },
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Login",
+          "name": "Login Admin",
           "request": {
             "method": "POST",
             "header": [
@@ -55,7 +113,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin123!\"\n}"
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
@@ -67,7 +125,65 @@
                 "login"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login admin responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', data.access_token);",
+                  "pm.collectionVariables.set('refresh_token', data.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login usuario responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', data.access_token);",
+                  "pm.collectionVariables.set('refresh_token', data.refresh_token);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Refresh Token",
@@ -93,7 +209,23 @@
                 "refresh"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Refresh responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', data.access_token);",
+                  "pm.collectionVariables.set('refresh_token', data.refresh_token);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Logout",
@@ -119,7 +251,22 @@
                 "logout"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Logout responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.set('access_token', '');",
+                  "pm.collectionVariables.set('refresh_token', '');"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -138,7 +285,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Matheus Ebert\",\n  \"email\": \"matheus@example.com\",\n  \"phone\": \"11999998888\",\n  \"password\": \"Admin123!\"\n}"
+              "raw": "{\n  \"name\": \"{{user_name}}\",\n  \"email\": \"{{user_email}}\",\n  \"phone\": \"{{user_phone}}\",\n  \"password\": \"{{user_password}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/users",
@@ -149,7 +296,22 @@
                 "users"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Criacao de usuario responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('user_id', String(data.id));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Meu Perfil",
@@ -169,6 +331,44 @@
               "path": [
                 "users",
                 "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Meu perfil responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('user_id', String(data.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Meu Plano",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me/plan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "me",
+                "plan"
               ]
             }
           }
@@ -229,7 +429,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Fibra 600\",\n  \"price\": 129.9,\n  \"speed\": 600\n}"
+              "raw": "{\n  \"name\": \"{{plan_name}}\",\n  \"price\": {{plan_price}},\n  \"speed\": {{plan_speed}}\n}"
             },
             "url": {
               "raw": "{{base_url}}/plans",
@@ -240,7 +440,22 @@
                 "plans"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Criacao de plano responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('plan_id', String(data.id));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Listar Planos",
@@ -280,7 +495,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"plan_id\": 1\n}"
+              "raw": "{\n  \"plan_id\": {{plan_id}}\n}"
             },
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}/subscribe",
@@ -291,6 +506,56 @@
                 "users",
                 "{{user_id}}",
                 "subscribe"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancelar Plano",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}/subscribe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "{{user_id}}",
+                "subscribe"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Administracao",
+      "item": [
+        {
+          "name": "Estatisticas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "stats"
               ]
             }
           }
