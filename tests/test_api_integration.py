@@ -12,6 +12,7 @@ def test_health_endpoint(client):
     payload = response.json()
     assert payload["status"] == "healthy"
     assert payload["service"] == "telecom-api"
+    assert payload["version"] == "1.2.0"
 
 
 def test_versioned_health_endpoint(client):
@@ -22,6 +23,17 @@ def test_versioned_health_endpoint(client):
     payload = response.json()
     assert payload["status"] == "healthy"
     assert payload["version"] == "1.2.0"
+
+
+def test_readiness_endpoint_reports_database_and_cache_status(client):
+    """Explicita o readiness das dependencias sem expor detalhes sensiveis."""
+    response = client.get("/api/v1/health/ready")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "healthy"
+    assert payload["checks"]["database"] == "ok"
+    assert payload["checks"]["cache"] == "desabilitado"
 
 
 def test_login_refresh_and_logout_flow(client, regular_user):
@@ -342,6 +354,17 @@ def test_api_preserva_request_id_informado_pelo_cliente(client):
 
     assert response.status_code == 200
     assert response.headers["x-request-id"] == "req-cliente-123"
+
+
+def test_api_ignora_request_id_invalido_enviado_pelo_cliente(client):
+    """Evita reaproveitar cabecalhos malformados como identificador de correlacao."""
+    response = client.get(
+        "/health",
+        headers={"X-Request-ID": "id com espaco"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-request-id"] != "id com espaco"
 
 
 def test_versioned_users_me_plan_returns_not_found_without_subscription(client, user_token):

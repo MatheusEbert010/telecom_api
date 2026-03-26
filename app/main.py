@@ -1,22 +1,27 @@
 """Ponto de entrada da API e configuracao global da aplicacao."""
 
+import re
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from .cache import cache
 from .config import settings
 from .logging_config import setup_logging
 from .request_context import get_request_id, reset_request_id, set_request_id
 from .routers import admin, auth, plans, users
+from .telecom_db import engine
 from .time_utils import utc_now
 
 logger = setup_logging()
 api_v1_router = APIRouter(prefix="/api/v1")
+REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
 
 
 @asynccontextmanager
@@ -45,12 +50,51 @@ app = FastAPI(
 @app.get("/health", tags=["Observabilidade"], deprecated=True)
 async def health_check():
     """Retorna o estado basico da API para monitoramento externo."""
-    return {
+    payload = {
         "status": "healthy",
         "timestamp": utc_now().isoformat(),
         "service": "telecom-api",
-        "version": settings.app_version,
     }
+    if settings.should_expose_health_version:
+        payload["version"] = settings.app_version
+    return payload
+
+
+@api_v1_router.get("/health/ready", tags=["Observabilidade"])
+@app.get("/health/ready", tags=["Observabilidade"], deprecated=True)
+async def readiness_check():
+    """Valida dependencias essenciais antes de marcar a API como pronta."""
+    database_status = "ok"
+    cache_status = "desabilitado"
+    status_code = status.HTTP_200_OK
+
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Falha no readiness check do banco")
+        database_status = "erro"
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    cache_ping = cache.ping()
+    if cache_ping is True:
+        cache_status = "ok"
+    elif cache_ping is False:
+        cache_status = "erro"
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "healthy" if status_code == status.HTTP_200_OK else "unhealthy",
+            "timestamp": utc_now().isoformat(),
+            "service": "telecom-api",
+            "checks": {
+                "database": database_status,
+                "cache": cache_status,
+            },
+        },
+    )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -84,7 +128,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Mantem o mesmo `request_id` ao longo de toda a requisicao."""
-        request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        client_request_id = (request.headers.get("X-Request-ID") or "").strip()
+        if settings.should_trust_client_request_id and REQUEST_ID_PATTERN.match(client_request_id):
+            request_id = client_request_id
+        else:
+            request_id = uuid4().hex
         token = set_request_id(request_id)
         request.state.request_id = request_id
 

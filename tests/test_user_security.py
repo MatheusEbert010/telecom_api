@@ -2,6 +2,8 @@
 
 import logging
 from datetime import timedelta
+from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -485,3 +487,41 @@ def test_logging_inclui_request_id_e_redige_campos_sensiveis():
     assert "Bearer123" not in rendered
     assert "abc123" not in rendered
     assert "DADO_SENSIVEL_REDACTED" in rendered
+
+
+def test_settings_carrega_segredos_a_partir_de_arquivo():
+    """Permite produzir configuracao segura sem embutir segredo no ambiente."""
+    temp_dir = Path(".test_tmp") / f"settings-{uuid4().hex}"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    secret_key_file = temp_dir / "secret_key.txt"
+    database_url_file = temp_dir / "database_url.txt"
+    secret_key_file.write_text("segredo-super-seguro-com-mais-de-32-caracteres", encoding="utf-8")
+    database_url_file.write_text("sqlite:///./arquivo.db", encoding="utf-8")
+
+    try:
+        settings_from_file = settings.__class__(
+            _env_file=None,
+            secret_key_file=str(secret_key_file),
+            database_url_file=str(database_url_file),
+            environment="test",
+        )
+    finally:
+        secret_key_file.unlink(missing_ok=True)
+        database_url_file.unlink(missing_ok=True)
+        temp_dir.rmdir()
+
+    assert settings_from_file.secret_key == "segredo-super-seguro-com-mais-de-32-caracteres"
+    assert settings_from_file.database_url == "sqlite:///./arquivo.db"
+
+
+def test_settings_usa_defaults_seguros_para_producao():
+    """Nao expoe versao no health publico nem confia em request_id externo por padrao."""
+    production_settings = settings.__class__(
+        _env_file=None,
+        secret_key="segredo-super-seguro-com-mais-de-32-caracteres",
+        database_url="sqlite:///./producao.db",
+        environment="production",
+    )
+
+    assert production_settings.should_expose_health_version is False
+    assert production_settings.should_trust_client_request_id is False

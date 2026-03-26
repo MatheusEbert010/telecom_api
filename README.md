@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
-![Testes](https://img.shields.io/badge/tests-42%20passing-2EA44F)
+![Testes](https://img.shields.io/badge/tests-46%20passing-2EA44F)
 
 API REST para gerenciamento de usuarios, autenticacao e planos de telecomunicacoes.
 
@@ -172,6 +172,7 @@ Se o Mermaid nao renderizar no seu preview, o fluxo acima pode ser lido como:
 ### Observabilidade
 
 - `GET /api/v1/health`
+- `GET /api/v1/health/ready`
 - `GET /docs`
 - `GET /redoc`
 
@@ -211,6 +212,13 @@ Em erros de validacao, a resposta tambem inclui `errors` com a lista detalhada d
 
 As respostas de erro tambem incluem `request_id`, e o mesmo valor e devolvido no header `X-Request-ID`.
 
+## Health e Readiness
+
+- `GET /api/v1/health` e publico e responde de forma enxuta para monitoramento externo
+- em `production`, a versao da aplicacao deixa de aparecer nesse endpoint por padrao
+- `GET /api/v1/health/ready` valida banco e cache para decidir se a API esta pronta para receber trafego
+- o cabecalho `X-Request-ID` e saneado antes de ser reaproveitado, evitando aceitar valores malformados
+
 ## Variaveis de Ambiente
 
 O projeto usa um arquivo `.env`. Existe um exemplo em [`.env.example`](/c:/Users/MATHEUS-PC/telecom_api/.env.example).
@@ -218,12 +226,14 @@ O projeto usa um arquivo `.env`. Existe um exemplo em [`.env.example`](/c:/Users
 Variaveis principais:
 
 - `SECRET_KEY`: chave usada para assinar JWTs
+- `SECRET_KEY_FILE`: caminho opcional para ler a chave secreta de um arquivo
 - `ALGORITHM`: algoritmo do JWT, por padrao `HS256`
 - `JWT_ISSUER`: emissor esperado nos JWTs da aplicacao
 - `JWT_AUDIENCE`: audiencia esperada nos JWTs emitidos pela API
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: expiracao do access token
 - `REFRESH_TOKEN_EXPIRE_DAYS`: expiracao do refresh token
 - `DATABASE_URL`: string de conexao do banco
+- `DATABASE_URL_FILE`: caminho opcional para ler a URL do banco de um arquivo
 - `MYSQL_ROOT_PASSWORD`: senha do usuario `root` do MySQL em Docker
 - `MYSQL_DATABASE`: banco criado automaticamente no container
 - `MYSQL_USER`: usuario usado pela aplicacao no MySQL em Docker
@@ -236,6 +246,8 @@ Variaveis principais:
 - `API_PORT`: porta exposta da API no host, limitada a `127.0.0.1`
 - `CORS_ORIGINS`: lista CSV ou JSON de origens liberadas para browser
 - `ENVIRONMENT`: `development`, `test` ou `production`
+- `HEALTH_EXPOSE_VERSION`: sobrescreve a politica de exibir versao no health publico
+- `TRUST_CLIENT_REQUEST_ID`: define se a API reaproveita `X-Request-ID` vindo do cliente
 - `LOG_LEVEL`: nivel de log (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
 - `LOG_DIR`: pasta onde os logs serao gravados
 - `LOG_FILE_NAME`: nome do arquivo principal de logs
@@ -251,12 +263,14 @@ Exemplo:
 
 ```env
 SECRET_KEY=replace_with_a_secret_key_that_has_at_least_32_chars
+SECRET_KEY_FILE=
 ALGORITHM=HS256
 JWT_ISSUER=telecom-api
 JWT_AUDIENCE=telecom-api-clients
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 DATABASE_URL=mysql+pymysql://user:password@localhost/database_name
+DATABASE_URL_FILE=
 MYSQL_ROOT_PASSWORD=troque_esta_senha_root
 MYSQL_DATABASE=telecom_api
 MYSQL_USER=telecom_user
@@ -269,6 +283,8 @@ REDIS_PORT_HOST=6379
 API_PORT=8000
 ENVIRONMENT=development
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+HEALTH_EXPOSE_VERSION=
+TRUST_CLIENT_REQUEST_ID=
 LOG_LEVEL=INFO
 LOG_DIR=logs
 LOG_FILE_NAME=telecom_api.log
@@ -366,6 +382,32 @@ docker compose exec api python -m app.scripts.criar_admin `
   --senha "Admin123!" `
   --telefone "11999990000"
 ```
+
+## Docker para Producao
+
+Existe um compose separado em [docker-compose.production.yml](/c:/Users/MATHEUS-PC/telecom_api/docker-compose.production.yml) para um caminho mais seguro de producao.
+
+Esse arquivo:
+
+- usa `SECRET_KEY_FILE` e `DATABASE_URL_FILE` na API
+- usa `MYSQL_PASSWORD_FILE` e `MYSQL_ROOT_PASSWORD_FILE` no MySQL
+- nao publica MySQL nem Redis no host
+- desabilita a exposicao da versao no health publico por padrao
+- nao confia em `X-Request-ID` vindo do cliente por padrao
+
+Arquivos de exemplo para os segredos:
+
+- [secret_key.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/secret_key.txt.example)
+- [database_url.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/database_url.txt.example)
+- [mysql_password.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/mysql_password.txt.example)
+- [mysql_root_password.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/mysql_root_password.txt.example)
+
+Fluxo sugerido:
+
+1. copie os arquivos `.example` em `docker/secrets/` para arquivos `.txt`
+2. preencha os valores reais
+3. execute `docker compose -f docker-compose.production.yml up -d --build`
+4. valide `GET /api/v1/health` e `GET /api/v1/health/ready`
 
 ## Primeiros Passos com Docker
 

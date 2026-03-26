@@ -90,5 +90,16 @@ class Cache:
             logger.error(f"Cache clear pattern error: {e}")
             return False
 
+    def ping(self) -> bool | None:
+        """Informa se o Redis esta ativo quando o cache esta habilitado."""
+        if not self.enabled:
+            return None
+
+        try:
+            return bool(self.redis_client.ping())
+        except Exception as e:
+            logger.error(f"Cache ping error: {e}")
+            return False
+
 
 cache = Cache()

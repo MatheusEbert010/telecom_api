@@ -1,0 +1,81 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      ENVIRONMENT: production
+      SECRET_KEY_FILE: /run/secrets/secret_key
+      DATABASE_URL_FILE: /run/secrets/database_url
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      LOG_DIR: /app/logs
+      LOG_FILE_NAME: telecom_api.log
+      LOG_TO_FILE: ${LOG_TO_FILE:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-[]}
+      HEALTH_EXPOSE_VERSION: ${HEALTH_EXPOSE_VERSION:-false}
+      TRUST_CLIENT_REQUEST_ID: ${TRUST_CLIENT_REQUEST_ID:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    secrets:
+      - secret_key
+      - database_url
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  db:
+    build:
+      context: ./docker/mysql
+      dockerfile: Dockerfile
+    image: telecom_api-mysql:production
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-telecom_api}
+      MYSQL_USER: ${MYSQL_USER:-telecom_user}
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    secrets:
+      - mysql_password
+      - mysql_root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -uroot -p$$(cat /run/secrets/mysql_root_password) --silent",
+        ]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+secrets:
+  secret_key:
+    file: ./docker/secrets/secret_key.txt
+  database_url:
+    file: ./docker/secrets/database_url.txt
+  mysql_password:
+    file: ./docker/secrets/mysql_password.txt
+  mysql_root_password:
+    file: ./docker/secrets/mysql_root_password.txt
+
+volumes:
+  mysql_data:
+  redis_data:
