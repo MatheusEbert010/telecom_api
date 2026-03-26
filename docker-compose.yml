@@ -1,20 +1,19 @@
-version: '3.8'
-
 services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     environment:
-      - ENVIRONMENT=production
-      - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=mysql+pymysql://telecom_user:telecom_pass@db/telecom_api
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - SECRET_KEY=${SECRET_KEY:?defina_SECRET_KEY_no_arquivo_env}
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:?defina_MYSQL_USER_no_arquivo_env}:${MYSQL_PASSWORD:?defina_MYSQL_PASSWORD_no_arquivo_env}@db/${MYSQL_DATABASE:?defina_MYSQL_DATABASE_no_arquivo_env}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
       - LOG_DIR=/app/logs
       - LOG_FILE_NAME=telecom_api.log
-      - LOG_TO_FILE=true
+      - LOG_TO_FILE=${LOG_TO_FILE:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CORS_ORIGINS=${CORS_ORIGINS:-[]}
     depends_on:
       db:
@@ -31,26 +30,33 @@ services:
       retries: 3
 
   db:
-    image: mysql:8.0
+    build:
+      context: ./docker/mysql
+      dockerfile: Dockerfile
+    image: telecom_api-mysql:local
     environment:
-      MYSQL_ROOT_PASSWORD: root_pass
-      MYSQL_DATABASE: telecom_api
-      MYSQL_USER: telecom_user
-      MYSQL_PASSWORD: telecom_pass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?defina_MYSQL_ROOT_PASSWORD_no_arquivo_env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?defina_MYSQL_DATABASE_no_arquivo_env}
+      MYSQL_USER: ${MYSQL_USER:?defina_MYSQL_USER_no_arquivo_env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina_MYSQL_PASSWORD_no_arquivo_env}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
+        ]
       timeout: 20s
       retries: 10
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT_HOST:-6379}:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -59,6 +65,24 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  db_backup:
+    image: mysql:8.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?defina_MYSQL_DATABASE_no_arquivo_env}
+      MYSQL_USER: ${MYSQL_USER:?defina_MYSQL_USER_no_arquivo_env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina_MYSQL_PASSWORD_no_arquivo_env}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups/mysql:/backups
+      - ./docker/mysql/backup:/scripts:ro
+    command: ["sh", "/scripts/backup.sh"]
+    restart: unless-stopped
 
 volumes:
   mysql_data:

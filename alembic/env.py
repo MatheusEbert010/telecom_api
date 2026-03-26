@@ -5,10 +5,14 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from app.config import settings
 from app.models import Base
 
 # Objeto principal de configuracao carregado do `alembic.ini`.
 config = context.config
+
+# Prioriza a URL do ambiente para funcionar em Docker, CI e execucao local.
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Inicializa logging do Alembic quando o arquivo de configuracao existe.
 if config.config_file_name is not None:

@@ -173,15 +173,24 @@ Variaveis principais:
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: expiracao do access token
 - `REFRESH_TOKEN_EXPIRE_DAYS`: expiracao do refresh token
 - `DATABASE_URL`: string de conexao do banco
+- `MYSQL_ROOT_PASSWORD`: senha do usuario `root` do MySQL em Docker
+- `MYSQL_DATABASE`: banco criado automaticamente no container
+- `MYSQL_USER`: usuario usado pela aplicacao no MySQL em Docker
+- `MYSQL_PASSWORD`: senha do usuario da aplicacao no MySQL em Docker
+- `MYSQL_PORT`: porta exposta do MySQL no host, limitada a `127.0.0.1`
 - `REDIS_HOST`: host do Redis
 - `REDIS_PORT`: porta do Redis
 - `REDIS_DB`: indice logico do Redis
+- `REDIS_PORT_HOST`: porta exposta do Redis no host, limitada a `127.0.0.1`
+- `API_PORT`: porta exposta da API no host, limitada a `127.0.0.1`
 - `CORS_ORIGINS`: lista CSV ou JSON de origens liberadas para browser
 - `ENVIRONMENT`: `development`, `test` ou `production`
 - `LOG_LEVEL`: nivel de log (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
 - `LOG_DIR`: pasta onde os logs serao gravados
 - `LOG_FILE_NAME`: nome do arquivo principal de logs
 - `LOG_TO_FILE`: habilita ou desabilita escrita em arquivo
+- `BACKUP_INTERVAL_HOURS`: intervalo entre backups automaticos do MySQL em Docker
+- `BACKUP_RETENTION_DAYS`: quantidade de dias mantida para os arquivos de backup
 
 Exemplo:
 
@@ -191,15 +200,24 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 DATABASE_URL=mysql+pymysql://user:password@localhost/database_name
+MYSQL_ROOT_PASSWORD=troque_esta_senha_root
+MYSQL_DATABASE=telecom_api
+MYSQL_USER=telecom_user
+MYSQL_PASSWORD=troque_esta_senha_do_app
+MYSQL_PORT=3306
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
+REDIS_PORT_HOST=6379
+API_PORT=8000
 ENVIRONMENT=development
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 LOG_LEVEL=INFO
 LOG_DIR=logs
 LOG_FILE_NAME=telecom_api.log
 LOG_TO_FILE=true
+BACKUP_INTERVAL_HOURS=24
+BACKUP_RETENTION_DAYS=7
 ```
 
 ## Como Rodar Localmente
@@ -252,6 +270,20 @@ Observacoes:
 
 - o container da API executa `alembic upgrade head` antes de subir o Uvicorn
 - os logs ficam disponiveis em `./logs/telecom_api.log` quando `LOG_TO_FILE=true`
+- a API, o MySQL e o Redis ficam publicados apenas em `127.0.0.1` no host local
+- o MySQL fica exposto apenas em `127.0.0.1:${MYSQL_PORT}` para reduzir superficie local
+- a configuracao do MySQL fica em [`docker/mysql/conf.d/my.cnf`](/c:/Users/MATHEUS-PC/telecom_api/docker/mysql/conf.d/my.cnf)
+- os backups sao gerados em `./backups/mysql` pelo servico `db_backup`
+- o Compose agora falha cedo quando `SECRET_KEY` ou credenciais do MySQL nao estiverem definidas no `.env`
+
+Fluxo sugerido para usar MySQL em Docker local:
+
+1. Copie [`.env.example`](/c:/Users/MATHEUS-PC/telecom_api/.env.example) para `.env`.
+2. Ajuste `SECRET_KEY`, `MYSQL_ROOT_PASSWORD` e `MYSQL_PASSWORD`.
+3. Ajuste `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PORT`, `REDIS_PORT_HOST` e `API_PORT` se precisar.
+4. Defina `DATABASE_URL` apontando para `127.0.0.1:${MYSQL_PORT}` se for acessar o banco pelo host.
+5. Execute `docker-compose up -d --build`.
+6. Acompanhe os logs com `docker-compose logs -f api db db_backup`.
 
 ## Qualidade e Testes
 

@@ -14,6 +14,7 @@ Pendencias priorizadas para evolucao da Telecom API.
 - [x] Remover rota duplicada de assinatura por `/plans/{user_id}/subscribe`.
 - [x] Adicionar paginacao na listagem de planos.
 - [x] Adicionar log em arquivo rotativo da aplicacao.
+- [x] Endurecer o ambiente Docker local com MySQL configurado e backup basico.
 
 ## Curto prazo
 
@@ -22,6 +23,7 @@ Pendencias priorizadas para evolucao da Telecom API.
 - [ ] Criar seeds opcionais para ambiente local e demonstracoes.
 - [ ] Cobrir cenarios de concorrencia para refresh token e atualizacao de usuario.
 - [ ] Adicionar teste de integracao focado em MySQL real via Docker.
+- [ ] Adicionar restauracao automatizada de backup para ambiente local e homologacao.
 
 ## Medio prazo
 
