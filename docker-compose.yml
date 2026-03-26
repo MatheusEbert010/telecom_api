@@ -11,9 +11,16 @@ services:
       - DATABASE_URL=mysql+pymysql://telecom_user:telecom_pass@db/telecom_api
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_DB=0
+      - LOG_DIR=/app/logs
+      - LOG_FILE_NAME=telecom_api.log
+      - LOG_TO_FILE=true
+      - CORS_ORIGINS=${CORS_ORIGINS:-[]}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped
@@ -34,7 +41,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]

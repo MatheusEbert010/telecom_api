@@ -1,21 +1,21 @@
 import requests
 
-# URL da API
+# Endereco da API
 base_url = "http://localhost:8000"
 
-# Dados do usuário admin
+# Dados do usuario administrador
 user_data = {
-    "name": "Admin User",
+    "name": "Usuario Administrador",
     "email": "admin@telecom.com",
-    "password": "Admin123!"
+    "password": "Admin123!",
 }
 
-# Criar usuário
+# Criar usuario
 response = requests.post(f"{base_url}/users/", json=user_data)
 
-print(f"Status Code: {response.status_code}")
+print(f"Codigo de status: {response.status_code}")
 try:
-    print(f"Response: {response.json()}")
-except Exception as e:
-    print(f"Response text: {response.text}")
-    print(f"JSON decode error: {str(e)}")
+    print(f"Resposta: {response.json()}")
+except Exception as exc:
+    print(f"Texto da resposta: {response.text}")
+    print(f"Erro ao decodificar JSON: {str(exc)}")

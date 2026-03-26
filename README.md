@@ -1,11 +1,11 @@
 # Telecom API
 
 [![CI](https://github.com/MatheusEbert010/telecom_api/actions/workflows/ci.yml/badge.svg)](https://github.com/MatheusEbert010/telecom_api/actions/workflows/ci.yml)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![Licenca](https://img.shields.io/badge/license-MIT-blue)
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-24%20passing-2EA44F)
+![Testes](https://img.shields.io/badge/tests-27%20passing-2EA44F)
 
 API REST para gerenciamento de usuarios, autenticacao e planos de telecomunicacoes.
 
@@ -15,7 +15,7 @@ O projeto foi construido com foco em fundamentos que pesam bastante em backend p
 
 - [Visao Geral](#visao-geral)
 - [Principais Diferenciais](#principais-diferenciais)
-- [Stack](#stack)
+- [Tecnologias](#tecnologias)
 - [Arquitetura](#arquitetura)
 - [Seguranca Aplicada](#seguranca-aplicada)
 - [Rotas Principais](#rotas-principais)
@@ -27,9 +27,10 @@ O projeto foi construido com foco em fundamentos que pesam bastante em backend p
 - [Exemplos de Uso](#exemplos-de-uso)
 - [Postman](#postman)
 - [CI](#ci)
-- [Releases](#releases)
+- [Publicacoes](#publicacoes)
+- [Pendencias](#pendencias)
 - [Decisoes Tecnicas](#decisoes-tecnicas)
-- [Roadmap](#roadmap)
+- [Proximos Passos](#proximos-passos)
 
 ## Visao Geral
 
@@ -41,7 +42,7 @@ Esta API permite:
 - listar usuarios com busca, filtros, ordenacao e paginacao
 - criar e consultar planos
 - associar usuarios a planos
-- expor um endpoint de health check para monitoramento
+- expor um endpoint de saude para monitoramento
 
 ## Principais Diferenciais
 
@@ -53,7 +54,7 @@ Esta API permite:
 - migrations validadas por teste automatizado em banco limpo
 - pipeline de CI rodando lint e testes
 
-## Stack
+## Tecnologias
 
 - Python 3.11+
 - FastAPI
@@ -104,7 +105,7 @@ flowchart LR
     C --> D[CRUD / Repositories]
     D --> E[(MySQL)]
     C --> F[(Redis Cache)]
-    B --> G[Dependencies de Auth]
+    B --> G[Dependencias de Autenticacao]
     G --> C
 ```
 
@@ -121,7 +122,7 @@ flowchart LR
 
 ## Rotas Principais
 
-### Auth
+### Autenticacao
 
 - `POST /auth/login`
 - `POST /auth/refresh`
@@ -142,7 +143,6 @@ flowchart LR
 
 - `POST /plans`
 - `GET /plans`
-- `POST /plans/{user_id}/subscribe`
 
 ### Observabilidade
 
@@ -176,12 +176,17 @@ Variaveis principais:
 - `REDIS_HOST`: host do Redis
 - `REDIS_PORT`: porta do Redis
 - `REDIS_DB`: indice logico do Redis
+- `CORS_ORIGINS`: lista CSV ou JSON de origens liberadas para browser
 - `ENVIRONMENT`: `development`, `test` ou `production`
+- `LOG_LEVEL`: nivel de log (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
+- `LOG_DIR`: pasta onde os logs serao gravados
+- `LOG_FILE_NAME`: nome do arquivo principal de logs
+- `LOG_TO_FILE`: habilita ou desabilita escrita em arquivo
 
 Exemplo:
 
 ```env
-SECRET_KEY=your_super_secret_key_here_32_chars_minimum
+SECRET_KEY=replace_with_a_secret_key_that_has_at_least_32_chars
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
@@ -190,6 +195,11 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
 ENVIRONMENT=development
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+LOG_LEVEL=INFO
+LOG_DIR=logs
+LOG_FILE_NAME=telecom_api.log
+LOG_TO_FILE=true
 ```
 
 ## Como Rodar Localmente
@@ -238,11 +248,10 @@ API local:
 docker-compose up -d --build
 ```
 
-Observacao:
-o arquivo [`docker-compose.yml`](/c:/Users/MATHEUS-PC/telecom_api/docker-compose.yml) referencia `./init.sql`, mas esse arquivo nao esta presente no repositorio hoje. Antes de usar o Compose, voce pode:
+Observacoes:
 
-- criar um `init.sql` vazio ou com seed inicial
-- ou remover esse volume do servico `db`
+- o container da API executa `alembic upgrade head` antes de subir o Uvicorn
+- os logs ficam disponiveis em `./logs/telecom_api.log` quando `LOG_TO_FILE=true`
 
 ## Qualidade e Testes
 
@@ -327,7 +336,7 @@ O pipeline esta configurado em [ci.yml](/c:/Users/MATHEUS-PC/telecom_api/.github
 - lint com Ruff
 - testes com Pytest
 
-## Releases
+## Publicacoes
 
 O projeto agora possui dois arquivos de apoio para versao e publicacao:
 
@@ -335,6 +344,10 @@ O projeto agora possui dois arquivos de apoio para versao e publicacao:
 - [RELEASE.md](/c:/Users/MATHEUS-PC/telecom_api/RELEASE.md), com o passo a passo para criar commit, tag e release no GitHub
 
 Tambem foi adicionada a configuracao [release.yml](/c:/Users/MATHEUS-PC/telecom_api/.github/release.yml#L1) para organizar release notes automáticas no GitHub por categoria.
+
+## Pendencias
+
+As pendencias priorizadas do projeto estao em [BACKLOG.md](/c:/Users/MATHEUS-PC/telecom_api/BACKLOG.md) com itens concluidos nesta rodada e proximos passos sugeridos.
 
 ## Decisoes Tecnicas
 
@@ -357,14 +370,14 @@ Este projeto ajuda a demonstrar evolucao em pontos importantes de backend:
 - como testar fluxo HTTP, seguranca e migrations no mesmo repositorio
 - como transformar um projeto funcional em um repositorio mais profissional para GitHub
 
-## Roadmap
+## Proximos Passos
 
 Proximos passos recomendados para continuar amadurecendo o projeto:
 
 - separar dominios em pacotes mais explicitos dentro de `app`
 - ampliar testes negativos e cenarios de concorrencia
 - adicionar observabilidade mais rica com logs estruturados
-- revisar e endurecer a configuracao de CORS para producao
+- criar testes de integracao com MySQL real via Docker
 - evoluir a documentacao com diagramas de sequencia e exemplos reais de deploy
 
 ## Autor
