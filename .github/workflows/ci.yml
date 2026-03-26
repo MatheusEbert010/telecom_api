@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     # Executa a esteira basica de qualidade em ambiente limpo.
@@ -15,10 +18,10 @@ jobs:
 
     steps:
       - name: Baixar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -40,10 +43,10 @@ jobs:
 
     steps:
       - name: Baixar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -61,13 +64,47 @@ jobs:
 
     steps:
       - name: Baixar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Gerar imagem da API
         run: docker build -t telecom-api-ci .
 
       - name: Gerar imagem do MySQL
         run: docker build -t telecom-api-mysql-ci ./docker/mysql
+
+  seguranca_imagens:
+    # Varre as imagens geradas no CI para bloquear vulnerabilidades altas e criticas.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v5
+
+      - name: Gerar imagem da API para analise
+        run: docker build -t telecom-api-scan .
+
+      - name: Varrer imagem da API
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: telecom-api-scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Gerar imagem do MySQL para analise
+        run: docker build -t telecom-api-mysql-scan ./docker/mysql
+
+      - name: Varrer imagem do MySQL
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: telecom-api-mysql-scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
 
   integracao_mysql:
     # Valida migrations e fluxos criticos contra MySQL real e Redis ativo.
@@ -110,10 +147,10 @@ jobs:
 
     steps:
       - name: Baixar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 

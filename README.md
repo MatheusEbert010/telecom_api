@@ -476,6 +476,7 @@ Cobertura atual de qualidade:
 - CI com GitHub Actions em push para `main` e em `pull_request`
 - auditoria automatica de dependencias com `pip-audit`
 - validacao de build das imagens Docker da API e do MySQL customizado
+- varredura automatica das imagens Docker com Trivy
 
 ## Exemplos de Uso
 
@@ -576,7 +577,10 @@ O pipeline esta configurado em [ci.yml](/c:/Users/MATHEUS-PC/telecom_api/.github
 - auditoria de vulnerabilidades nas dependencias Python com `pip-audit`
 - build da imagem principal da API
 - build da imagem customizada do MySQL
+- varredura das imagens Docker com Trivy em severidades `HIGH` e `CRITICAL`
 - migrations e testes de integracao contra MySQL real e Redis ativo
+
+O workflow tambem ja força `Node 24` para actions JavaScript, reduzindo o risco de quebra futura por deprecacao do runtime antigo do GitHub Actions.
 
 ## Publicacoes
 
@@ -619,7 +623,7 @@ Proximos passos recomendados para continuar amadurecendo o projeto:
 - separar dominios em pacotes mais explicitos dentro de `app`
 - ampliar testes negativos e cenarios de concorrencia
 - adicionar observabilidade mais rica com logs estruturados
-- adicionar varredura de seguranca para imagens Docker
+- adicionar SBOM e upload de relatórios de seguranca
 - evoluir a documentacao com diagramas de sequencia e exemplos reais de deploy
 
 ## Autor
