@@ -234,6 +234,12 @@ Variaveis principais:
 - `REFRESH_TOKEN_EXPIRE_DAYS`: expiracao do refresh token
 - `DATABASE_URL`: string de conexao do banco
 - `DATABASE_URL_FILE`: caminho opcional para ler a URL do banco de um arquivo
+- `DATABASE_HOST`: host do banco quando a aplicacao monta a URL a partir de partes
+- `DATABASE_PORT`: porta do banco quando a aplicacao monta a URL a partir de partes
+- `DATABASE_NAME`: nome do banco quando a aplicacao monta a URL a partir de partes
+- `DATABASE_USER`: usuario do banco quando a aplicacao monta a URL a partir de partes
+- `DATABASE_PASSWORD`: senha do banco quando a aplicacao monta a URL a partir de partes
+- `DATABASE_PASSWORD_FILE`: caminho opcional para ler a senha do banco de um arquivo e montar a URL com escape seguro
 - `MYSQL_ROOT_PASSWORD`: senha do usuario `root` do MySQL em Docker
 - `MYSQL_DATABASE`: banco criado automaticamente no container
 - `MYSQL_USER`: usuario usado pela aplicacao no MySQL em Docker
@@ -244,10 +250,14 @@ Variaveis principais:
 - `REDIS_DB`: indice logico do Redis
 - `REDIS_PORT_HOST`: porta exposta do Redis no host, limitada a `127.0.0.1`
 - `API_PORT`: porta exposta da API no host, limitada a `127.0.0.1`
+- `PROXY_HTTP_PORT`: porta HTTP publicada pelo proxy reverso no compose de producao
+- `PROXY_HTTPS_PORT`: porta HTTPS publicada pelo proxy reverso no compose de producao
 - `CORS_ORIGINS`: lista CSV ou JSON de origens liberadas para browser
 - `ENVIRONMENT`: `development`, `test` ou `production`
 - `HEALTH_EXPOSE_VERSION`: sobrescreve a politica de exibir versao no health publico
 - `TRUST_CLIENT_REQUEST_ID`: define se a API reaproveita `X-Request-ID` vindo do cliente
+- `UVICORN_PROXY_HEADERS`: habilita leitura de `X-Forwarded-*` quando a API esta atras de proxy
+- `UVICORN_FORWARDED_ALLOW_IPS`: lista de IPs confiaveis para cabecalhos de proxy no Uvicorn
 - `LOG_LEVEL`: nivel de log (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
 - `LOG_DIR`: pasta onde os logs serao gravados
 - `LOG_FILE_NAME`: nome do arquivo principal de logs
@@ -281,10 +291,14 @@ REDIS_PORT=6379
 REDIS_DB=0
 REDIS_PORT_HOST=6379
 API_PORT=8000
+PROXY_HTTP_PORT=8080
+PROXY_HTTPS_PORT=8443
 ENVIRONMENT=development
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 HEALTH_EXPOSE_VERSION=
 TRUST_CLIENT_REQUEST_ID=
+UVICORN_PROXY_HEADERS=
+UVICORN_FORWARDED_ALLOW_IPS=
 LOG_LEVEL=INFO
 LOG_DIR=logs
 LOG_FILE_NAME=telecom_api.log
@@ -390,24 +404,43 @@ Existe um compose separado em [docker-compose.production.yml](/c:/Users/MATHEUS-
 Esse arquivo:
 
 - usa `SECRET_KEY_FILE` e `DATABASE_URL_FILE` na API
+- monta a `DATABASE_URL` automaticamente a partir de `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER` e `DATABASE_PASSWORD_FILE`
 - usa `MYSQL_PASSWORD_FILE` e `MYSQL_ROOT_PASSWORD_FILE` no MySQL
+- adiciona um Nginx como proxy reverso na frente da API
+- publica apenas as portas HTTP e HTTPS do proxy no host
+- deixa a API acessivel apenas pela rede interna do Compose
 - nao publica MySQL nem Redis no host
 - desabilita a exposicao da versao no health publico por padrao
 - nao confia em `X-Request-ID` vindo do cliente por padrao
+- redireciona HTTP para HTTPS e espera certificado/chave em arquivos secretos
 
 Arquivos de exemplo para os segredos:
 
 - [secret_key.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/secret_key.txt.example)
-- [database_url.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/database_url.txt.example)
 - [mysql_password.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/mysql_password.txt.example)
 - [mysql_root_password.txt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/mysql_root_password.txt.example)
+- [tls.crt.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/tls.crt.example)
+- [tls.key.example](/c:/Users/MATHEUS-PC/telecom_api/docker/secrets/tls.key.example)
 
 Fluxo sugerido:
 
 1. copie os arquivos `.example` em `docker/secrets/` para arquivos `.txt`
-2. preencha os valores reais
-3. execute `docker compose -f docker-compose.production.yml up -d --build`
-4. valide `GET /api/v1/health` e `GET /api/v1/health/ready`
+2. copie tambem `tls.crt.example` e `tls.key.example` para `tls.crt` e `tls.key`, substituindo pelo certificado e chave reais em formato PEM
+3. preencha os valores reais
+4. ajuste `PROXY_HTTP_PORT` e `PROXY_HTTPS_PORT` se quiser publicar o proxy em portas diferentes de `8080` e `8443`
+5. mantenha `UVICORN_PROXY_HEADERS=1` e configure `UVICORN_FORWARDED_ALLOW_IPS` com a rede confiavel do proxy quando precisar restringir mais
+6. execute `docker compose -f docker-compose.production.yml up -d --build`
+7. valide `GET /api/v1/health` e `GET /api/v1/health/ready`
+8. acesse a API pela porta HTTPS do proxy, por exemplo `https://127.0.0.1:8443/api/v1/health`
+
+Observacao:
+o compose de producao monta a `DATABASE_URL` automaticamente a partir das partes do banco e da senha lida em `MYSQL_PASSWORD_FILE`, evitando erro com caracteres especiais na senha.
+Os arquivos de segredo devem conter somente o valor puro, sem espacos ou quebras de linha extras no final.
+
+Arquivos do proxy reverso:
+
+- [nginx.conf](/c:/Users/MATHEUS-PC/telecom_api/docker/nginx/nginx.conf)
+- [telecom_api.conf](/c:/Users/MATHEUS-PC/telecom_api/docker/nginx/conf.d/telecom_api.conf)
 
 ## Primeiros Passos com Docker
 

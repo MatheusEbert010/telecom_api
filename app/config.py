@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Literal
+from urllib.parse import quote_plus
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,6 +34,13 @@ class Settings(BaseSettings):
     # Conexao principal do banco.
     database_url: str | None = None
     database_url_file: str | None = None
+    database_scheme: str = "mysql+pymysql"
+    database_host: str | None = None
+    database_port: int | None = Field(None, ge=1, le=65535)
+    database_name: str | None = None
+    database_user: str | None = None
+    database_password: str | None = None
+    database_password_file: str | None = None
 
     # Configuracao do Redis.
     redis_host: str = "localhost"
@@ -62,6 +70,7 @@ class Settings(BaseSettings):
         file_mappings = {
             "secret_key": "secret_key_file",
             "database_url": "database_url_file",
+            "database_password": "database_password_file",
         }
 
         for field_name, file_field_name in file_mappings.items():
@@ -76,6 +85,21 @@ class Settings(BaseSettings):
                 )
 
             values[field_name] = secret_path.read_text(encoding="utf-8").strip()
+
+        if not values.get("database_url"):
+            host = str(values.get("database_host") or "").strip()
+            name = str(values.get("database_name") or "").strip()
+            user = str(values.get("database_user") or "").strip()
+            password = str(values.get("database_password") or "").strip()
+            scheme = str(values.get("database_scheme") or "mysql+pymysql").strip()
+            port = values.get("database_port")
+
+            if host and name and user and password:
+                encoded_password = quote_plus(password)
+                port_segment = f":{port}" if port else ""
+                values["database_url"] = (
+                    f"{scheme}://{user}:{encoded_password}@{host}{port_segment}/{name}"
+                )
 
         return values
 

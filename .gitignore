@@ -156,6 +156,8 @@ backups/
 .pip-audit-cache/
 .tmp-pip-audit/
 docker/secrets/*.txt
+docker/secrets/*.crt
+docker/secrets/*.key
 
 # Docker
 .dockerignore

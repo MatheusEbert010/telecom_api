@@ -1,12 +1,38 @@
 services:
+  proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${PROXY_HTTP_PORT:-8080}:80"
+      - "${PROXY_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+    secrets:
+      - tls_cert
+      - tls_key
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-check-certificate -q -O /dev/null https://127.0.0.1/api/v1/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   api:
     build: .
-    ports:
-      - "${API_PORT:-8000}:8000"
     environment:
       ENVIRONMENT: production
       SECRET_KEY_FILE: /run/secrets/secret_key
-      DATABASE_URL_FILE: /run/secrets/database_url
+      DATABASE_HOST: db
+      DATABASE_NAME: ${MYSQL_DATABASE:-telecom_api}
+      DATABASE_USER: ${MYSQL_USER:-telecom_user}
+      DATABASE_PASSWORD_FILE: /run/secrets/mysql_password
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
@@ -17,6 +43,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-[]}
       HEALTH_EXPOSE_VERSION: ${HEALTH_EXPOSE_VERSION:-false}
       TRUST_CLIENT_REQUEST_ID: ${TRUST_CLIENT_REQUEST_ID:-false}
+      UVICORN_PROXY_HEADERS: ${UVICORN_PROXY_HEADERS:-1}
+      UVICORN_FORWARDED_ALLOW_IPS: ${UVICORN_FORWARDED_ALLOW_IPS:-*}
     depends_on:
       db:
         condition: service_healthy
@@ -24,7 +52,7 @@ services:
         condition: service_healthy
     secrets:
       - secret_key
-      - database_url
+      - mysql_password
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped
@@ -69,12 +97,14 @@ services:
 secrets:
   secret_key:
     file: ./docker/secrets/secret_key.txt
-  database_url:
-    file: ./docker/secrets/database_url.txt
   mysql_password:
     file: ./docker/secrets/mysql_password.txt
   mysql_root_password:
     file: ./docker/secrets/mysql_root_password.txt
+  tls_cert:
+    file: ./docker/secrets/tls.crt
+  tls_key:
+    file: ./docker/secrets/tls.key
 
 volumes:
   mysql_data:

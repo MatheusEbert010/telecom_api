@@ -514,6 +514,33 @@ def test_settings_carrega_segredos_a_partir_de_arquivo():
     assert settings_from_file.database_url == "sqlite:///./arquivo.db"
 
 
+def test_settings_monta_database_url_a_partir_de_partes_seguras():
+    """Monta a URL do banco codificando a senha quando ela vem por arquivo secreto."""
+    temp_dir = Path(".test_tmp") / f"db-parts-{uuid4().hex}"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    password_file = temp_dir / "database_password.txt"
+    password_file.write_text("Senha@123:segura", encoding="utf-8")
+
+    try:
+        settings_from_parts = settings.__class__(
+            _env_file=None,
+            secret_key="segredo-super-seguro-com-mais-de-32-caracteres",
+            database_url="",
+            database_host="db",
+            database_name="telecom_api",
+            database_user="telecom_user",
+            database_password_file=str(password_file),
+            environment="test",
+        )
+    finally:
+        password_file.unlink(missing_ok=True)
+        temp_dir.rmdir()
+
+    assert settings_from_parts.database_url == (
+        "mysql+pymysql://telecom_user:Senha%40123%3Asegura@db/telecom_api"
+    )
+
+
 def test_settings_usa_defaults_seguros_para_producao():
     """Nao expoe versao no health publico nem confia em request_id externo por padrao."""
     production_settings = settings.__class__(
