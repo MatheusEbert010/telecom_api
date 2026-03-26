@@ -83,28 +83,36 @@ jobs:
       - name: Gerar imagem da API para analise
         run: docker build -t telecom-api-scan .
 
-      - name: Varrer imagem da API
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          image-ref: telecom-api-scan
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
+      - name: Exportar imagem da API
+        run: docker save telecom-api-scan -o telecom-api-scan.tar
+
+      - name: Varrer imagem da API com Trivy
+        run: >
+          docker run --rm
+          -v "${{ github.workspace }}:/work"
+          get.trivy.dev/image/trivy:0.68.1
+          image
+          --input /work/telecom-api-scan.tar
+          --severity HIGH,CRITICAL
+          --ignore-unfixed
+          --exit-code 1
 
       - name: Gerar imagem do MySQL para analise
         run: docker build -t telecom-api-mysql-scan ./docker/mysql
 
-      - name: Varrer imagem do MySQL
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          image-ref: telecom-api-mysql-scan
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
+      - name: Exportar imagem do MySQL
+        run: docker save telecom-api-mysql-scan -o telecom-api-mysql-scan.tar
+
+      - name: Varrer imagem do MySQL com Trivy
+        run: >
+          docker run --rm
+          -v "${{ github.workspace }}:/work"
+          get.trivy.dev/image/trivy:0.68.1
+          image
+          --input /work/telecom-api-mysql-scan.tar
+          --severity HIGH,CRITICAL
+          --ignore-unfixed
+          --exit-code 1
 
   integracao_mysql:
     # Valida migrations e fluxos criticos contra MySQL real e Redis ativo.
