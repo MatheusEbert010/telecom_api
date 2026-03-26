@@ -1,5 +1,7 @@
 """Ponto de entrada da API e configuracao global da aplicacao."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,12 +14,26 @@ from .time_utils import utc_now
 
 logger = setup_logging()
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Registra eventos de ciclo de vida para facilitar observabilidade operacional."""
+    logger.info(
+        "Aplicacao iniciando. environment=%s docs_enabled=%s",
+        settings.environment,
+        settings.docs_enabled,
+    )
+    yield
+    logger.info("Aplicacao finalizando")
+
+
 app = FastAPI(
-    title="Telecom API",
+    title=settings.app_name,
     description="API para gerenciamento de usuarios e planos de telecomunicacoes",
-    version="1.0.0",
-    docs_url=None if settings.environment == "production" else "/docs",
-    redoc_url=None if settings.environment == "production" else "/redoc",
+    version=settings.app_version,
+    docs_url="/docs" if settings.docs_enabled else None,
+    redoc_url="/redoc" if settings.docs_enabled else None,
+    lifespan=lifespan,
 )
 
 
@@ -28,7 +44,7 @@ async def health_check():
         "status": "healthy",
         "timestamp": utc_now().isoformat(),
         "service": "telecom-api",
-        "version": "1.0.0",
+        "version": settings.app_version,
     }
 
 
@@ -61,9 +77,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],
+    allow_origins=settings.effective_cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
 
@@ -71,11 +87,7 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Padroniza erros inesperados sem expor detalhes sensiveis ao cliente."""
-    if settings.environment == "development":
-        import traceback
-
-        traceback.print_exc()
-
+    logger.exception("Erro nao tratado ao processar %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "Erro interno do servidor"},

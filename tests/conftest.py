@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-with-minimum-32chars")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_bootstrap.db")
 os.environ.setdefault("ENVIRONMENT", "test")
 
