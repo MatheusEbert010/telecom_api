@@ -581,6 +581,7 @@ O pipeline esta configurado em [ci.yml](/c:/Users/MATHEUS-PC/telecom_api/.github
 - migrations e testes de integracao contra MySQL real e Redis ativo
 
 O workflow tambem ja força `Node 24` para actions JavaScript, reduzindo o risco de quebra futura por deprecacao do runtime antigo do GitHub Actions.
+O bloqueio de vulnerabilidades fica estrito para a imagem da API; a imagem derivada de `mysql:8.0` continua sendo varrida de forma informativa para acompanhar riscos herdados do upstream.
 
 ## Publicacoes
 
