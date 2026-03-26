@@ -4,7 +4,7 @@ import logging
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from jose import JWTError
+from jwt import InvalidTokenError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
@@ -83,7 +83,7 @@ def refresh_token(data: schemas.RefreshTokenRequest, db: Session = Depends(get_d
     """Valida e rotaciona o refresh token antes de emitir novos tokens."""
     try:
         payload = decode_token_by_type(data.refresh_token, expected_token_type="refresh")
-    except JWTError as exc:
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de refresh invalido ou expirado",

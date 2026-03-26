@@ -133,6 +133,7 @@ Se o Mermaid nao renderizar no seu preview, o fluxo acima pode ser lido como:
 - `GET /users/me` fica protegido contra conflito de rota com `/{user_id}`
 - refresh tokens sao persistidos em hash
 - JWTs carregam `iss`, `aud` e `token_type` para reduzir uso indevido entre fluxos
+- cada resposta devolve `X-Request-ID` para correlacao entre cliente, API e logs
 - logout e refresh invalidam e rotacionam tokens corretamente
 - rotas sensiveis usam RBAC com dependencias especificas
 - respostas de usuario nunca retornam hash de senha
@@ -207,6 +208,8 @@ Os erros da API agora seguem um formato mais consistente para facilitar consumo 
 ```
 
 Em erros de validacao, a resposta tambem inclui `errors` com a lista detalhada dos campos rejeitados.
+
+As respostas de erro tambem incluem `request_id`, e o mesmo valor e devolvido no header `X-Request-ID`.
 
 ## Variaveis de Ambiente
 
@@ -339,6 +342,7 @@ Observacoes:
 
 - o container da API executa `alembic upgrade head` antes de subir o Uvicorn
 - os logs ficam disponiveis em `./logs/telecom_api.log` quando `LOG_TO_FILE=true`
+- cada requisicao recebe um `X-Request-ID`, reaproveitado quando o cliente envia esse cabecalho
 - a API, o MySQL e o Redis ficam publicados apenas em `127.0.0.1` no host local
 - o MySQL fica exposto apenas em `127.0.0.1:${MYSQL_PORT}` para reduzir superficie local
 - a configuracao do MySQL fica em [`docker/mysql/conf.d/my.cnf`](/c:/Users/MATHEUS-PC/telecom_api/docker/mysql/conf.d/my.cnf)

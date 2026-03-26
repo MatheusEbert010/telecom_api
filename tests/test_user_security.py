@@ -1,5 +1,6 @@
 """Testes focados em seguranca, contratos de resposta e regras de negocio."""
 
+import logging
 from datetime import timedelta
 
 import pytest
@@ -11,11 +12,18 @@ from app import schemas
 from app.cache import Cache
 from app.config import settings
 from app.crud import user_repository
+from app.logging_config import RequestIdFilter, SafeFormatter
 from app.main import app
 from app.models import User
+from app.request_context import reset_request_id, set_request_id
 from app.routers import plans as plans_router
 from app.routers import users as users_router
-from app.security import create_access_token, create_refresh_token, decode_token, hash_refresh_token
+from app.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    hash_refresh_token,
+)
 from app.services import plan_service, user_service
 from app.time_utils import utc_now_naive
 
@@ -449,3 +457,31 @@ def test_cache_clear_pattern_uses_scan_iter():
 
     assert result is True
     assert cache_instance.redis_client.deleted_keys == ("users:list:1", "users:list:2")
+
+
+def test_logging_inclui_request_id_e_redige_campos_sensiveis():
+    """Mantem rastreabilidade e evita vazar credenciais em mensagens de log."""
+    token = set_request_id("req-teste-log")
+
+    try:
+        record = logging.makeLogRecord(
+            {
+                "name": "app.tests",
+                "levelno": logging.INFO,
+                "levelname": "INFO",
+                "msg": "Authorization=Bearer123 password=abc123",
+            }
+        )
+
+        filtro = RequestIdFilter()
+        formatter = SafeFormatter("%(request_id)s %(message)s")
+
+        assert filtro.filter(record) is True
+        rendered = formatter.format(record)
+    finally:
+        reset_request_id(token)
+
+    assert rendered.startswith("req-teste-log ")
+    assert "Bearer123" not in rendered
+    assert "abc123" not in rendered
+    assert "DADO_SENSIVEL_REDACTED" in rendered

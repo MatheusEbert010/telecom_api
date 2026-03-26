@@ -8,6 +8,7 @@ def test_health_endpoint(client):
     response = client.get("/health")
 
     assert response.status_code == 200
+    assert response.headers["x-request-id"]
     payload = response.json()
     assert payload["status"] == "healthy"
     assert payload["service"] == "telecom-api"
@@ -328,7 +329,19 @@ def test_validation_errors_return_code_and_error_list(client):
     payload = response.json()
     assert payload["code"] == "erro_validacao"
     assert payload["detail"] == "Dados de entrada invalidos"
+    assert payload["request_id"] == response.headers["x-request-id"]
     assert isinstance(payload["errors"], list)
+
+
+def test_api_preserva_request_id_informado_pelo_cliente(client):
+    """Devolve o mesmo identificador enviado pelo cliente para facilitar rastreio."""
+    response = client.get(
+        "/health",
+        headers={"X-Request-ID": "req-cliente-123"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-request-id"] == "req-cliente-123"
 
 
 def test_versioned_users_me_plan_returns_not_found_without_subscription(client, user_token):

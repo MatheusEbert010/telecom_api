@@ -5,7 +5,8 @@ from datetime import timedelta
 from uuid import uuid4
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 
 from .config import settings
 from .time_utils import utc_now
@@ -66,7 +67,7 @@ def decode_token_by_type(token: str, expected_token_type: str) -> dict:
     payload = decode_token(token)
     token_type = payload.get("token_type")
     if token_type != expected_token_type:
-        raise JWTError("Tipo de token invalido para esta operacao")
+        raise InvalidTokenError("Tipo de token invalido para esta operacao")
     return payload
 
 

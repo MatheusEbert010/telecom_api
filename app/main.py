@@ -1,6 +1,7 @@
 """Ponto de entrada da API e configuracao global da aplicacao."""
 
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -10,6 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import settings
 from .logging_config import setup_logging
+from .request_context import get_request_id, reset_request_id, set_request_id
 from .routers import admin, auth, plans, users
 from .time_utils import utc_now
 
@@ -77,6 +79,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RequestContextMiddleware(BaseHTTPMiddleware):
+    """Gera e propaga um identificador de requisicao para logs e clientes HTTP."""
+
+    async def dispatch(self, request: Request, call_next):
+        """Mantem o mesmo `request_id` ao longo de toda a requisicao."""
+        request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        token = set_request_id(request_id)
+        request.state.request_id = request_id
+
+        try:
+            response = await call_next(request)
+        finally:
+            reset_request_id(token)
+
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -98,7 +119,12 @@ ERROR_CODES = {
 }
 
 
-def build_error_payload(status_code: int, detail: str, errors: list[dict] | None = None) -> dict:
+def build_error_payload(
+    status_code: int,
+    detail: str,
+    errors: list[dict] | None = None,
+    request_id: str | None = None,
+) -> dict:
     """Monta um payload de erro consistente para clientes HTTP."""
     payload = {
         "code": ERROR_CODES.get(status_code, "erro_http"),
@@ -107,22 +133,28 @@ def build_error_payload(status_code: int, detail: str, errors: list[dict] | None
 
     if errors:
         payload["errors"] = errors
+    if request_id:
+        payload["request_id"] = request_id
 
     return payload
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(_: Request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException):
     """Padroniza erros HTTP esperados mantendo o status e os headers originais."""
     return JSONResponse(
         status_code=exc.status_code,
-        content=build_error_payload(exc.status_code, str(exc.detail)),
+        content=build_error_payload(
+            exc.status_code,
+            str(exc.detail),
+            request_id=getattr(request.state, "request_id", get_request_id()),
+        ),
         headers=exc.headers,
     )
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_: Request, exc: RequestValidationError):
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Traduz erros de validacao para um contrato estavel para o frontend."""
     return JSONResponse(
         status_code=422,
@@ -130,6 +162,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
             422,
             "Dados de entrada invalidos",
             errors=exc.errors(),
+            request_id=getattr(request.state, "request_id", get_request_id()),
         ),
     )
 
@@ -140,7 +173,11 @@ async def global_exception_handler(request, exc):
     logger.exception("Erro nao tratado ao processar %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
-        content=build_error_payload(500, "Erro interno do servidor"),
+        content=build_error_payload(
+            500,
+            "Erro interno do servidor",
+            request_id=getattr(request.state, "request_id", get_request_id()),
+        ),
     )
 
 

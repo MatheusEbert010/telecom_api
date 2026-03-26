@@ -153,6 +153,8 @@ backups/
 # Temporary files
 *.tmp
 *.temp
+.pip-audit-cache/
+.tmp-pip-audit/
 
 # Docker
 .dockerignore
