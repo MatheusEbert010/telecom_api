@@ -33,9 +33,13 @@ def test_alembic_upgrades_and_downgrades_clean_database():
 
         user_columns = {column["name"] for column in inspector.get_columns("users")}
         refresh_token_columns = {column["name"] for column in inspector.get_columns("refresh_tokens")}
+        plan_columns = {column["name"]: column for column in inspector.get_columns("plans")}
+        user_indexes = {index["name"] for index in inspector.get_indexes("users")}
 
         assert {"id", "name", "email", "password", "phone", "plan_id", "role"} <= user_columns
         assert {"id", "token", "user_id", "expires_at", "created_at"} <= refresh_token_columns
+        assert plan_columns["speed"]["nullable"] is False
+        assert {"ix_users_plan_id", "ix_users_role"} <= user_indexes
 
         command.downgrade(alembic_config, "base")
 

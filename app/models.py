@@ -26,10 +26,10 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     phone = Column(String(20))
-    role = Column(String(20), default=UserRole.USER, nullable=False)
+    role = Column(String(20), default=UserRole.USER, nullable=False, index=True)
     # Mantem compatibilidade com colunas sem timezone explicito.
     created_at = Column(DateTime, default=utc_now_naive)
-    plan_id = Column(Integer, ForeignKey("plans.id"))
+    plan_id = Column(Integer, ForeignKey("plans.id"), index=True)
     plan = relationship("Plan", back_populates="users")
     refresh_tokens = relationship(
         "RefreshToken",
@@ -46,7 +46,7 @@ class Plan(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
-    speed = Column(Integer)
+    speed = Column(Integer, nullable=False)
     users = relationship("User", back_populates="plan")
 
 
