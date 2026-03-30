@@ -1,6 +1,16 @@
 """Testes de integracao cobrindo os fluxos HTTP principais da API."""
 
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from app import schemas
+from app.cache import cache
+from app.main import app
+from app.routers import auth as auth_router
+from app.services import user_service
+from app.telecom_db import get_db
 
 
 def test_health_endpoint(client):
@@ -72,6 +82,11 @@ def test_login_refresh_and_logout_flow(client, regular_user):
     )
 
     assert reused_refresh_response.status_code == 401
+
+    assert login_response.headers["cache-control"] == "no-store"
+    assert refresh_response.headers["cache-control"] == "no-store"
+    assert logout_response.headers["cache-control"] == "no-store"
+    assert login_response.headers["pragma"] == "no-cache"
 
 
 def test_refresh_rejeita_access_token_no_fluxo_de_renovacao(client, regular_user):
@@ -343,6 +358,107 @@ def test_validation_errors_return_code_and_error_list(client):
     assert payload["detail"] == "Dados de entrada invalidos"
     assert payload["request_id"] == response.headers["x-request-id"]
     assert isinstance(payload["errors"], list)
+
+
+def test_create_user_duplicate_email_returns_generic_error(client, regular_user):
+    """Mantem o cadastro publico sem confirmar se um email ja existe na base."""
+    response = client.post(
+        "/users/",
+        json={
+            "name": "Outro Usuario",
+            "email": regular_user.email,
+            "phone": "11999997777",
+            "password": "Admin123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Nao foi possivel concluir o cadastro com os dados informados"
+
+
+def test_create_user_duplicate_email_is_case_insensitive(client, regular_user):
+    """Evita burlar duplicidade apenas trocando a capitalizacao do email."""
+    response = client.post(
+        "/users/",
+        json={
+            "name": "Outro Usuario",
+            "email": regular_user.email.upper(),
+            "phone": "11999997777",
+            "password": "Admin123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Nao foi possivel concluir o cadastro com os dados informados"
+
+
+def test_create_user_rejects_password_above_bcrypt_utf8_limit(client):
+    """Falha cedo quando a senha ultrapassa 72 bytes reais em UTF-8."""
+    response = client.post(
+        "/users/",
+        json={
+            "name": "Usuario Unicode",
+            "email": "unicode@example.com",
+            "phone": "11999998888",
+            "password": "A" + ("á" * 36) + "1!",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "erro_validacao"
+
+
+def test_login_rate_limit_returns_429_when_enabled():
+    """Exercita o limiter real no endpoint de login."""
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    from app.models import Base
+
+    Base.metadata.create_all(bind=engine)
+    db_session = session_local()
+    cache.enabled = False
+    auth_router.limiter.enabled = True
+    auth_router.limiter.reset()
+
+    user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Rate Limit User",
+            email="ratelimit@example.com",
+            phone="11999990009",
+            password="Admin123!",
+        ),
+    )
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as rate_limited_client:
+            last_response = None
+            for _ in range(6):
+                last_response = rate_limited_client.post(
+                    "/auth/login",
+                    json={"email": "ratelimit@example.com", "password": "Admin123!"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+        auth_router.limiter.reset()
+        db_session.close()
+        Base.metadata.drop_all(bind=engine)
+
+    assert last_response is not None
+    assert last_response.status_code == 429
 
 
 def test_api_preserva_request_id_informado_pelo_cliente(client):

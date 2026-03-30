@@ -25,7 +25,7 @@ def hash_password(password: str) -> bytes:
         password_bytes = password
 
     if len(password_bytes) > BCRYPT_MAX_LENGTH:
-        password_bytes = password_bytes[:BCRYPT_MAX_LENGTH]
+        raise ValueError("Senha excede o limite de 72 bytes suportado pelo bcrypt")
 
     return bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
@@ -41,7 +41,7 @@ def verify_password(plain_password, hashed_password) -> bool:
         hashed_password = hashed_password.encode("utf-8")
 
     if len(plain_bytes) > BCRYPT_MAX_LENGTH:
-        plain_bytes = plain_bytes[:BCRYPT_MAX_LENGTH]
+        return False
 
     return bcrypt.checkpw(plain_bytes, hashed_password)
 

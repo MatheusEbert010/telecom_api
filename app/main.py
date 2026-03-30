@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -108,6 +109,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = (
+            "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+            "magnetometer=(), microphone=(), payment=(), usb=()"
+        )
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
 
         # Em producao a politica e mais restritiva para reduzir a superficie de ataque.
         if settings.environment == "production":
@@ -209,7 +215,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content=build_error_payload(
             422,
             "Dados de entrada invalidos",
-            errors=exc.errors(),
+            errors=jsonable_encoder(exc.errors()),
             request_id=getattr(request.state, "request_id", get_request_id()),
         ),
     )

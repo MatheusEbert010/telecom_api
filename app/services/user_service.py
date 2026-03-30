@@ -1,12 +1,15 @@
 """Regras de negocio relacionadas ao ciclo de vida dos usuarios."""
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import schemas
 from ..cache import cache
 from ..crud import plan_repository, user_repository
 from ..security import hash_password
+
+PUBLIC_USER_CREATION_ERROR = "Nao foi possivel concluir o cadastro com os dados informados"
 
 
 def _hash_password(password: str) -> str:
@@ -19,7 +22,7 @@ def create_user(db: Session, user: schemas.UserCreate):
     """Cria um usuario comum com email unico e senha protegida por hash."""
     existing_user = user_repository.get_user_by_email(db, user.email)
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email ja cadastrado")
+        raise HTTPException(status_code=400, detail=PUBLIC_USER_CREATION_ERROR)
 
     user_data = {
         "name": user.name,
@@ -29,7 +32,11 @@ def create_user(db: Session, user: schemas.UserCreate):
         "role": schemas.UserRole.USER.value,
     }
 
-    created_user = user_repository.create_user(db, user_data)
+    try:
+        created_user = user_repository.create_user(db, user_data)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=PUBLIC_USER_CREATION_ERROR) from exc
     cache.clear_pattern("users:list:*")
     return created_user
 

@@ -3,7 +3,7 @@
 import logging
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from jwt import InvalidTokenError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 
+def _set_auth_no_store_headers(response: Response) -> None:
+    """Evita cache local ou intermediario de respostas com credenciais."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
+
 def _mask_email(email: str) -> str:
     """Oculta parte do email antes de enviar a informacao para logs."""
     local, _, domain = email.partition("@")
@@ -43,7 +49,12 @@ def _mask_email(email: str) -> str:
 
 @router.post("/login", response_model=schemas.TokenResponse)
 @limiter.limit("5/minute")
-def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    response: Response,
+    data: schemas.UserLogin,
+    db: Session = Depends(get_db),
+):
     """Autentica o usuario e emite access token e refresh token."""
     user = user_repository.get_user_by_email(db, data.email)
 
@@ -74,12 +85,17 @@ def login(request: Request, data: schemas.UserLogin, db: Session = Depends(get_d
         db,
         {"token": refresh_token, "user_id": user.id, "expires_at": expires_at},
     )
+    _set_auth_no_store_headers(response)
 
     return schemas.TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=schemas.TokenResponse)
-def refresh_token(data: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
+def refresh_token(
+    data: schemas.RefreshTokenRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     """Valida e rotaciona o refresh token antes de emitir novos tokens."""
     try:
         payload = decode_token_by_type(data.refresh_token, expected_token_type="refresh")
@@ -124,6 +140,7 @@ def refresh_token(data: schemas.RefreshTokenRequest, db: Session = Depends(get_d
         db,
         {"token": new_refresh_token, "user_id": user_id, "expires_at": expires_at},
     )
+    _set_auth_no_store_headers(response)
 
     return schemas.TokenResponse(
         access_token=access_token,
@@ -132,7 +149,12 @@ def refresh_token(data: schemas.RefreshTokenRequest, db: Session = Depends(get_d
 
 
 @router.post("/logout", response_model=schemas.MessageResponse)
-def logout(data: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
+def logout(
+    data: schemas.RefreshTokenRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     """Invalida o refresh token informado sem revelar se ele existia ou nao."""
     user_repository.delete_refresh_token(db, data.refresh_token)
+    _set_auth_no_store_headers(response)
     return {"message": "Logout realizado com sucesso"}

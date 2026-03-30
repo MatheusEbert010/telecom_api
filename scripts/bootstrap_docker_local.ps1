@@ -2,7 +2,6 @@ param(
     [string]$ArquivoEnv = ".env",
     [string]$NomeAdmin,
     [string]$EmailAdmin,
-    [string]$SenhaAdmin,
     [string]$TelefoneAdmin,
     [switch]$SemAdmin,
     [int]$TentativasSaude = 30,
@@ -72,13 +71,29 @@ function Obter-ValorConfiguracao {
     return $ValorPadrao
 }
 
+function Ler-SegredoSeguro {
+    param([string]$Mensagem)
+
+    $secureValue = Read-Host -Prompt $Mensagem -AsSecureString
+    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureValue)
+
+    try {
+        return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+    }
+    finally {
+        if ($bstr -ne [IntPtr]::Zero) {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+}
+
 $raizProjeto = Resolve-Path (Join-Path $PSScriptRoot "..")
 $caminhoEnv = Join-Path $raizProjeto $ArquivoEnv
 $variaveisDotEnv = Ler-VariaveisDotEnv -CaminhoArquivo $caminhoEnv
 
 $nomeAdminResolvido = Obter-ValorConfiguracao -Nome "ADMIN_BOOTSTRAP_NOME" -ValorExplicito $NomeAdmin -VariaveisDotEnv $variaveisDotEnv -ValorPadrao "Administrador Docker"
 $emailAdminResolvido = Obter-ValorConfiguracao -Nome "ADMIN_BOOTSTRAP_EMAIL" -ValorExplicito $EmailAdmin -VariaveisDotEnv $variaveisDotEnv
-$senhaAdminResolvida = Obter-ValorConfiguracao -Nome "ADMIN_BOOTSTRAP_SENHA" -ValorExplicito $SenhaAdmin -VariaveisDotEnv $variaveisDotEnv
+$senhaAdminResolvida = Obter-ValorConfiguracao -Nome "ADMIN_BOOTSTRAP_SENHA" -ValorExplicito $null -VariaveisDotEnv $variaveisDotEnv
 $telefoneAdminResolvido = Obter-ValorConfiguracao -Nome "ADMIN_BOOTSTRAP_TELEFONE" -ValorExplicito $TelefoneAdmin -VariaveisDotEnv $variaveisDotEnv -ValorPadrao "11999990000"
 $portaApi = Obter-ValorConfiguracao -Nome "API_PORT" -ValorExplicito $null -VariaveisDotEnv $variaveisDotEnv -ValorPadrao "8000"
 
@@ -125,7 +140,11 @@ try {
     }
 
     if (-not $senhaAdminResolvida) {
-        throw "Defina ADMIN_BOOTSTRAP_SENHA no .env ou informe -SenhaAdmin."
+        $senhaAdminResolvida = Ler-SegredoSeguro -Mensagem "Digite a senha do administrador"
+    }
+
+    if (-not $senhaAdminResolvida) {
+        throw "Defina ADMIN_BOOTSTRAP_SENHA no .env ou informe a senha quando solicitado."
     }
 
     $comandoAdmin = @(
@@ -140,8 +159,7 @@ try {
         $nomeAdminResolvido,
         "--email",
         $emailAdminResolvido,
-        "--senha",
-        $senhaAdminResolvida
+        "--senha-stdin"
     )
 
     if ($telefoneAdminResolvido) {
@@ -149,7 +167,7 @@ try {
     }
 
     Write-Host "Criando ou promovendo administrador..."
-    & docker @comandoAdmin
+    $senhaAdminResolvida | & docker @comandoAdmin
 
     if ($LASTEXITCODE -ne 0) {
         throw "Falha ao executar o bootstrap do administrador."

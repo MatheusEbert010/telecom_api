@@ -24,7 +24,8 @@ def get_user_by_id_with_plan(db: Session, user_id: int):
 
 def get_user_by_email(db: Session, email: str):
     """Busca um usuario pelo email unico."""
-    return db.query(models.User).filter(models.User.email == email).first()
+    normalized_email = email.strip().lower()
+    return db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
 
 
 def create_user(db: Session, user_data: dict):

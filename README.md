@@ -26,6 +26,7 @@ O caminho preferencial da API agora e `/api/v1`, mantendo as rotas legadas sem p
 - [Variaveis de Ambiente](#variaveis-de-ambiente)
 - [Como Rodar Localmente](#como-rodar-localmente)
 - [Rodando com Docker](#rodando-com-docker)
+- [Deploy no Render](#deploy-no-render)
 - [Primeiros Passos com Docker](#primeiros-passos-com-docker)
 - [Qualidade e Testes](#qualidade-e-testes)
 - [Exemplos de Uso](#exemplos-de-uso)
@@ -217,6 +218,7 @@ As respostas de erro tambem incluem `request_id`, e o mesmo valor e devolvido no
 - `GET /api/v1/health` e publico e responde de forma enxuta para monitoramento externo
 - em `production`, a versao da aplicacao deixa de aparecer nesse endpoint por padrao
 - `GET /api/v1/health/ready` valida banco e cache para decidir se a API esta pronta para receber trafego
+- no proxy de producao, o endpoint de readiness fica restrito ao proprio host para reduzir exposicao operacional
 - o cabecalho `X-Request-ID` e saneado antes de ser reaproveitado, evitando aceitar valores malformados
 
 ## Variaveis de Ambiente
@@ -257,7 +259,7 @@ Variaveis principais:
 - `HEALTH_EXPOSE_VERSION`: sobrescreve a politica de exibir versao no health publico
 - `TRUST_CLIENT_REQUEST_ID`: define se a API reaproveita `X-Request-ID` vindo do cliente
 - `UVICORN_PROXY_HEADERS`: habilita leitura de `X-Forwarded-*` quando a API esta atras de proxy
-- `UVICORN_FORWARDED_ALLOW_IPS`: lista de IPs confiaveis para cabecalhos de proxy no Uvicorn
+- `UVICORN_FORWARDED_ALLOW_IPS`: lista de IPs ou redes confiaveis para cabecalhos de proxy no Uvicorn
 - `LOG_LEVEL`: nivel de log (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
 - `LOG_DIR`: pasta onde os logs serao gravados
 - `LOG_FILE_NAME`: nome do arquivo principal de logs
@@ -266,7 +268,7 @@ Variaveis principais:
 - `BACKUP_RETENTION_DAYS`: quantidade de dias mantida para os arquivos de backup
 - `ADMIN_BOOTSTRAP_NOME`: nome usado pelo script de bootstrap do administrador em Docker
 - `ADMIN_BOOTSTRAP_EMAIL`: email usado pelo script de bootstrap do administrador em Docker
-- `ADMIN_BOOTSTRAP_SENHA`: senha usada pelo script de bootstrap do administrador em Docker
+- `ADMIN_BOOTSTRAP_SENHA`: senha opcional usada pelo script de bootstrap do administrador em Docker; se vazia, o script solicita sem ecoar no terminal
 - `ADMIN_BOOTSTRAP_TELEFONE`: telefone usado pelo script de bootstrap do administrador em Docker
 
 Exemplo:
@@ -298,7 +300,7 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 HEALTH_EXPOSE_VERSION=
 TRUST_CLIENT_REQUEST_ID=
 UVICORN_PROXY_HEADERS=
-UVICORN_FORWARDED_ALLOW_IPS=
+UVICORN_FORWARDED_ALLOW_IPS=127.0.0.1,172.16.0.0/12
 LOG_LEVEL=INFO
 LOG_DIR=logs
 LOG_FILE_NAME=telecom_api.log
@@ -307,7 +309,7 @@ BACKUP_INTERVAL_HOURS=24
 BACKUP_RETENTION_DAYS=7
 ADMIN_BOOTSTRAP_NOME=Administrador Docker
 ADMIN_BOOTSTRAP_EMAIL=admin@telecom.com
-ADMIN_BOOTSTRAP_SENHA=troque_esta_senha_do_admin
+ADMIN_BOOTSTRAP_SENHA=
 ADMIN_BOOTSTRAP_TELEFONE=11999990000
 ```
 
@@ -352,9 +354,10 @@ venv\Scripts\python.exe -m uvicorn app.main:app --reload
 venv\Scripts\python.exe -m app.scripts.criar_admin `
   --nome "Administrador Local" `
   --email "admin@telecom.com" `
-  --senha "Admin123!" `
   --telefone "11999990000"
 ```
+
+O script pede a senha de forma interativa e confirma duas vezes, evitando expo-la na linha de comando.
 
 API local:
 
@@ -393,7 +396,16 @@ Fluxo sugerido para usar MySQL em Docker local:
 docker compose exec api python -m app.scripts.criar_admin `
   --nome "Administrador Docker" `
   --email "admin@telecom.com" `
-  --senha "Admin123!" `
+  --telefone "11999990000"
+```
+
+Se precisar automatizar sem prompt, envie a senha via `stdin`:
+
+```powershell
+"Admin123!" | docker compose exec -T api python -m app.scripts.criar_admin `
+  --nome "Administrador Docker" `
+  --email "admin@telecom.com" `
+  --senha-stdin `
   --telefone "11999990000"
 ```
 
@@ -428,7 +440,7 @@ Fluxo sugerido:
 2. copie tambem `tls.crt.example` e `tls.key.example` para `tls.crt` e `tls.key`, substituindo pelo certificado e chave reais em formato PEM
 3. preencha os valores reais
 4. ajuste `PROXY_HTTP_PORT` e `PROXY_HTTPS_PORT` se quiser publicar o proxy em portas diferentes de `8080` e `8443`
-5. mantenha `UVICORN_PROXY_HEADERS=1` e configure `UVICORN_FORWARDED_ALLOW_IPS` com a rede confiavel do proxy quando precisar restringir mais
+5. mantenha `UVICORN_PROXY_HEADERS=1` e use `UVICORN_FORWARDED_ALLOW_IPS=127.0.0.1,172.16.0.0/12` como baseline para proxy local e redes Docker, ajustando para a sua topologia real quando necessario
 6. execute `docker compose -f docker-compose.production.yml up -d --build`
 7. valide `GET /api/v1/health` e `GET /api/v1/health/ready`
 8. acesse a API pela porta HTTPS do proxy, por exemplo `https://127.0.0.1:8443/api/v1/health`
@@ -441,6 +453,53 @@ Arquivos do proxy reverso:
 
 - [nginx.conf](/c:/Users/MATHEUS-PC/telecom_api/docker/nginx/nginx.conf)
 - [telecom_api.conf](/c:/Users/MATHEUS-PC/telecom_api/docker/nginx/conf.d/telecom_api.conf)
+
+## Deploy no Render
+
+O projeto agora inclui um blueprint em [render.yaml](/c:/Users/MATHEUS-PC/telecom_api/render.yaml) para subir a stack principal no Render com:
+
+- uma `Web Service` publica para a API
+- uma `Private Service` com MySQL em Docker e disco persistente
+- uma instância `Key Value` para cache Redis/Valkey
+- o cache fica sem acesso externo e conversa com a API pela rede privada do Render
+- `autoDeployTrigger: checksPass`, para deploy automatico somente depois que o CI do GitHub Actions passar
+
+### Como o fluxo CI/CD fica nesse caso
+
+1. voce faz push para `main`
+2. o GitHub Actions roda os jobs de CI definidos em [ci.yml](/c:/Users/MATHEUS-PC/telecom_api/.github/workflows/ci.yml)
+3. quando os checks passam, o Render inicia o deploy automaticamente
+4. a API publica atualiza no dominio `onrender.com` ou no dominio customizado que voce configurar
+
+Em outras palavras: sim, isso ja e CD trabalhando em cima do seu CI atual.
+
+### Como subir
+
+1. envie o repositorio atualizado para o GitHub
+2. entre no Render e conecte sua conta GitHub
+3. escolha `New +` -> `Blueprint`
+4. selecione este repositorio
+5. revise os servicos propostos no `render.yaml`
+6. informe os valores secretos pedidos para `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` e `CORS_ORIGINS`
+7. finalize a criacao
+
+### Observacoes importantes para este projeto
+
+- o container da API agora respeita `PORT`, o que encaixa melhor no ambiente do Render
+- a API continua executando `alembic upgrade head` ao iniciar, o que ajuda no bootstrap inicial
+- para comecar o frontend, faz sentido expor a API publica no Render
+- para ambiente publico, defina `CORS_ORIGINS` com o dominio real do frontend, por exemplo `https://seu-frontend.vercel.app`
+
+### Recomendacao pratica
+
+Para o seu momento atual, eu acho um bom caminho subir no Render sim, porque:
+
+- voce consegue colocar a API publica rapido
+- ja tem CI no GitHub Actions e isso conversa bem com `checksPass`
+- o frontend pode comecar a integrar num endpoint real
+- voce nao precisa administrar VPS, proxy reverso e SSL manualmente agora
+
+O ponto de atencao e o banco: no Render, MySQL nesse desenho fica como servico Docker com disco persistente, nao como banco gerenciado nativo. Isso funciona para iniciar e validar o frontend, mas para producao mais madura eu manteria backups logicos frequentes e avaliaria depois se vale migrar para uma oferta gerenciada que atenda melhor seu banco.
 
 ## Primeiros Passos com Docker
 
@@ -464,12 +523,11 @@ Variaveis opcionais para esse fluxo no [`.env.example`](/c:/Users/MATHEUS-PC/tel
 - `ADMIN_BOOTSTRAP_SENHA`
 - `ADMIN_BOOTSTRAP_TELEFONE`
 
-Exemplo de uso passando os dados do admin pela linha de comando:
+Exemplo de uso passando email, nome e telefone pela linha de comando e deixando a senha no `.env` ou no prompt:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_docker_local.ps1 `
   -EmailAdmin "admin@telecom.com" `
-  -SenhaAdmin "Admin123!" `
   -NomeAdmin "Administrador Docker" `
   -TelefoneAdmin "11999990000"
 ```

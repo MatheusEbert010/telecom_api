@@ -29,7 +29,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/api/v1/health/ready', timeout=5).raise_for_status()"
+    CMD python -c "import os, requests; requests.get(f\"http://localhost:{os.environ.get('PORT', '8000')}/api/v1/health/ready\", timeout=5).raise_for_status()"
 
 # Comando para iniciar a aplicação
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 ${UVICORN_PROXY_HEADERS:+--proxy-headers} --forwarded-allow-ips \"${UVICORN_FORWARDED_ALLOW_IPS:-127.0.0.1}\""]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" ${UVICORN_PROXY_HEADERS:+--proxy-headers} --forwarded-allow-ips \"${UVICORN_FORWARDED_ALLOW_IPS:-127.0.0.1,172.16.0.0/12}\""]

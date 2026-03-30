@@ -20,6 +20,31 @@ class StrictSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+BCRYPT_PASSWORD_MAX_BYTES = 72
+
+
+def _validate_password_strength(value: str) -> str:
+    """Aplica as regras de complexidade e o limite real do bcrypt em bytes."""
+    password_bytes = value.encode("utf-8")
+    if len(password_bytes) > BCRYPT_PASSWORD_MAX_BYTES:
+        raise ValueError("Senha deve ter no maximo 72 bytes em UTF-8")
+
+    if not any(char.isupper() for char in value):
+        raise ValueError("Senha deve ter pelo menos 1 letra maiuscula")
+    if not any(char.islower() for char in value):
+        raise ValueError("Senha deve ter pelo menos 1 letra minuscula")
+    if not any(char.isdigit() for char in value):
+        raise ValueError("Senha deve ter pelo menos 1 numero")
+    if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?" for char in value):
+        raise ValueError("Senha deve ter pelo menos 1 caractere especial")
+
+    common_passwords = ["password", "123456", "admin", "qwerty"]
+    if value.lower() in common_passwords:
+        raise ValueError("Senha muito comum, escolha uma mais forte")
+
+    return value
+
+
 class UserBase(StrictSchema):
     """Campos compartilhados entre criacao e atualizacao de usuario."""
 
@@ -34,6 +59,12 @@ class UserBase(StrictSchema):
         if any(char.isdigit() for char in value):
             raise ValueError("Nome nao pode conter numeros")
         return value.strip()
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        """Normaliza o email para reduzir ambiguidades entre caixas e espacos."""
+        return str(value).strip().lower()
 
     @field_validator("phone")
     @classmethod
@@ -55,20 +86,7 @@ class UserCreate(UserBase):
     @classmethod
     def validate_password(cls, value: str) -> str:
         """Exige senha forte e bloqueia combinacoes muito comuns."""
-        if not any(char.isupper() for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 letra maiuscula")
-        if not any(char.islower() for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 letra minuscula")
-        if not any(char.isdigit() for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 numero")
-        if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?" for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 caractere especial")
-
-        common_passwords = ["password", "123456", "admin", "qwerty"]
-        if value.lower() in common_passwords:
-            raise ValueError("Senha muito comum, escolha uma mais forte")
-
-        return value
+        return _validate_password_strength(value)
 
 
 class UserUpdate(UserBase):
@@ -83,20 +101,7 @@ class UserUpdate(UserBase):
         if value is None:
             return value
 
-        if not any(char.isupper() for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 letra maiuscula")
-        if not any(char.islower() for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 letra minuscula")
-        if not any(char.isdigit() for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 numero")
-        if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?" for char in value):
-            raise ValueError("Senha deve ter pelo menos 1 caractere especial")
-
-        common_passwords = ["password", "123456", "admin", "qwerty"]
-        if value.lower() in common_passwords:
-            raise ValueError("Senha muito comum, escolha uma mais forte")
-
-        return value
+        return _validate_password_strength(value)
 
 
 class UserRoleUpdate(StrictSchema):
@@ -105,11 +110,25 @@ class UserRoleUpdate(StrictSchema):
     role: UserRole
 
 
-class UserLogin(BaseModel):
+class UserLogin(StrictSchema):
     """Credenciais usadas no fluxo de login."""
 
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        """Mantem o login alinhado ao formato persistido na base."""
+        return str(value).strip().lower()
+
+    @field_validator("password")
+    @classmethod
+    def validate_login_password(cls, value: str) -> str:
+        """Bloqueia senhas que ultrapassariam o limite real do bcrypt."""
+        if len(value.encode("utf-8")) > BCRYPT_PASSWORD_MAX_BYTES:
+            raise ValueError("Senha deve ter no maximo 72 bytes em UTF-8")
+        return value
 
 
 class UserResponse(StrictSchema):

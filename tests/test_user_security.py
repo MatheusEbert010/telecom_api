@@ -9,6 +9,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.routing import APIRoute
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from app import schemas
 from app.cache import Cache
@@ -40,6 +41,42 @@ def test_user_create_rejects_role_field():
             password="Admin123!",
             role="admin",
         )
+
+
+def test_user_create_normalizes_email_to_lowercase():
+    """Padroniza email antes de qualquer fluxo de persistencia."""
+    payload = schemas.UserCreate(
+        name="Matheus Ebert",
+        email="Matheus@Example.COM ",
+        phone="11999998888",
+        password="Admin123!",
+    )
+
+    assert payload.email == "matheus@example.com"
+
+
+def test_user_create_rejects_password_above_72_utf8_bytes():
+    """Impede que senhas Unicode ultrapassem o limite real suportado pelo bcrypt."""
+    with pytest.raises(ValidationError) as exc_info:
+        schemas.UserCreate(
+            name="Matheus Ebert",
+            email="matheus@example.com",
+            phone="11999998888",
+            password="A" + ("á" * 36) + "1!",
+        )
+
+    assert "72 bytes" in str(exc_info.value)
+
+
+def test_user_login_rejects_password_above_72_utf8_bytes():
+    """Aplica a mesma protecao no fluxo de login para evitar truncamento silencioso."""
+    with pytest.raises(ValidationError) as exc_info:
+        schemas.UserLogin(
+            email="matheus@example.com",
+            password="A" + ("á" * 36) + "1!",
+        )
+
+    assert "72 bytes" in str(exc_info.value)
 
 
 def test_create_user_defaults_to_user_role(db_session):
@@ -143,6 +180,87 @@ def test_ensure_admin_user_promotes_existing_user_to_admin(db_session):
     assert admin_user.name == "Usuario Promovido"
     assert admin_user.phone == "11999997777"
     assert admin_user.role == schemas.UserRole.ADMIN.value
+
+
+def test_create_user_returns_generic_message_when_email_already_exists(db_session):
+    """Evita que o cadastro publico confirme se um email ja esta registrado."""
+    user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Primeiro Usuario",
+            email="matheus@example.com",
+            phone="11999998888",
+            password="Admin123!",
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        user_service.create_user(
+            db_session,
+            schemas.UserCreate(
+                name="Segundo Usuario",
+                email="matheus@example.com",
+                phone="11999997777",
+                password="Admin123!",
+            ),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == user_service.PUBLIC_USER_CREATION_ERROR
+
+
+def test_create_user_rejects_duplicate_email_ignoring_case(db_session):
+    """Nao permite duplicidade de email apenas mudando maiusculas e minusculas."""
+    user_service.create_user(
+        db_session,
+        schemas.UserCreate(
+            name="Primeiro Usuario",
+            email="Matheus@Example.com",
+            phone="11999998888",
+            password="Admin123!",
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        user_service.create_user(
+            db_session,
+            schemas.UserCreate(
+                name="Segundo Usuario",
+                email="matheus@example.com",
+                phone="11999997777",
+                password="Admin123!",
+            ),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == user_service.PUBLIC_USER_CREATION_ERROR
+
+
+def test_create_user_handles_unique_constraint_without_revealing_existing_email(db_session):
+    """Mantem a resposta generica mesmo em corrida na constraint unica do banco."""
+    original_create_user = user_repository.create_user
+
+    def failing_create_user(*args, **kwargs):
+        raise IntegrityError("insert", {}, Exception("duplicate"))
+
+    user_repository.create_user = failing_create_user
+
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            user_service.create_user(
+                db_session,
+                schemas.UserCreate(
+                    name="Usuario Concorrente",
+                    email="concorrente@example.com",
+                    phone="11999998888",
+                    password="Admin123!",
+                ),
+            )
+    finally:
+        user_repository.create_user = original_create_user
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == user_service.PUBLIC_USER_CREATION_ERROR
 
 
 def test_users_me_route_is_registered_before_user_id_route():

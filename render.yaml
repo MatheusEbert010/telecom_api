@@ -1,0 +1,89 @@
+services:
+  - type: web
+    name: telecom-api
+    runtime: docker
+    repo: https://github.com/MatheusEbert010/telecom_api.git
+    branch: main
+    autoDeployTrigger: checksPass
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_HOST
+        fromService:
+          type: pserv
+          name: telecom-mysql
+          property: host
+      - key: DATABASE_PORT
+        fromService:
+          type: pserv
+          name: telecom-mysql
+          property: port
+      - key: DATABASE_NAME
+        fromService:
+          type: pserv
+          name: telecom-mysql
+          envVarKey: MYSQL_DATABASE
+      - key: DATABASE_USER
+        fromService:
+          type: pserv
+          name: telecom-mysql
+          envVarKey: MYSQL_USER
+      - key: DATABASE_PASSWORD
+        fromService:
+          type: pserv
+          name: telecom-mysql
+          envVarKey: MYSQL_PASSWORD
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: telecom-cache
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: telecom-cache
+          property: port
+      - key: REDIS_DB
+        value: "0"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOG_TO_FILE
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HEALTH_EXPOSE_VERSION
+        value: "false"
+      - key: TRUST_CLIENT_REQUEST_ID
+        value: "false"
+      - key: UVICORN_PROXY_HEADERS
+        value: "1"
+      - key: UVICORN_FORWARDED_ALLOW_IPS
+        value: "*"
+
+  - type: pserv
+    name: telecom-mysql
+    runtime: docker
+    dockerfilePath: ./docker/mysql/Dockerfile
+    dockerContext: ./docker/mysql
+    envVars:
+      - key: MYSQL_DATABASE
+        value: telecom_api
+      - key: MYSQL_USER
+        value: telecom_user
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_ROOT_PASSWORD
+        sync: false
+    disk:
+      name: mysql-data
+      mountPath: /var/lib/mysql
+      sizeGB: 10
+
+  - type: keyvalue
+    name: telecom-cache
+    ipAllowList: []
