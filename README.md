@@ -459,9 +459,9 @@ Arquivos do proxy reverso:
 O projeto agora inclui um blueprint em [render.yaml](/c:/Users/MATHEUS-PC/telecom_api/render.yaml) para subir a stack principal no Render com:
 
 - uma `Web Service` publica para a API
-- uma `Private Service` com MySQL em Docker e disco persistente
 - uma instância `Key Value` para cache Redis/Valkey
 - o cache fica sem acesso externo e conversa com a API pela rede privada do Render
+- conexao com MySQL externo via `DATABASE_URL`
 - `autoDeployTrigger: checksPass`, para deploy automatico somente depois que o CI do GitHub Actions passar
 
 ### Como o fluxo CI/CD fica nesse caso
@@ -480,7 +480,7 @@ Em outras palavras: sim, isso ja e CD trabalhando em cima do seu CI atual.
 3. escolha `New +` -> `Blueprint`
 4. selecione este repositorio
 5. revise os servicos propostos no `render.yaml`
-6. informe os valores secretos pedidos para `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` e `CORS_ORIGINS`
+6. informe os valores secretos pedidos para `DATABASE_URL` e `CORS_ORIGINS`
 7. finalize a criacao
 
 ### Observacoes importantes para este projeto
@@ -489,6 +489,7 @@ Em outras palavras: sim, isso ja e CD trabalhando em cima do seu CI atual.
 - a API continua executando `alembic upgrade head` ao iniciar, o que ajuda no bootstrap inicial
 - para comecar o frontend, faz sentido expor a API publica no Render
 - para ambiente publico, defina `CORS_ORIGINS` com o dominio real do frontend, por exemplo `https://seu-frontend.vercel.app`
+- para MySQL externo, prefira fornecer a string completa em `DATABASE_URL`, porque isso simplifica host, porta, usuario, senha e parametros extras do provedor
 
 ### Recomendacao pratica
 
@@ -499,7 +500,36 @@ Para o seu momento atual, eu acho um bom caminho subir no Render sim, porque:
 - o frontend pode comecar a integrar num endpoint real
 - voce nao precisa administrar VPS, proxy reverso e SSL manualmente agora
 
-O ponto de atencao e o banco: no Render, MySQL nesse desenho fica como servico Docker com disco persistente, nao como banco gerenciado nativo. Isso funciona para iniciar e validar o frontend, mas para producao mais madura eu manteria backups logicos frequentes e avaliaria depois se vale migrar para uma oferta gerenciada que atenda melhor seu banco.
+O ponto de atencao fica na conectividade com o banco externo: alguns provedores exigem liberar faixas de IP de saida do Render ou configurar proxy de saida com IP fixo. Se o seu provedor exigir allowlist estrita, valide isso antes do primeiro deploy.
+
+### Usando MySQL externo
+
+Com MySQL externo, o desenho fica:
+
+- Render hospeda a API publica
+- Render hospeda o cache interno
+- o banco fica em um provedor MySQL gerenciado fora do Render
+
+Nesse caso, configure no Render a variavel `DATABASE_URL` com algo como:
+
+```env
+mysql+pymysql://USUARIO:SENHA@HOST:3306/NOME_DO_BANCO
+```
+
+Se o seu provedor exigir SSL ou parametros extras, eles entram na propria URL. Exemplo ilustrativo:
+
+```env
+mysql+pymysql://USUARIO:SENHA@HOST:3306/NOME_DO_BANCO?charset=utf8mb4
+```
+
+Checklist pratico:
+
+1. crie o banco MySQL externo
+2. obtenha host, porta, nome do banco, usuario e senha
+3. monte a `DATABASE_URL`
+4. no Render, preencha `DATABASE_URL` como segredo da `Web Service`
+5. se o provedor exigir allowlist de IP, libere as saidas do Render para a regiao do seu servico
+6. valide o deploy e depois teste `GET /api/v1/health/ready`
 
 ## Primeiros Passos com Docker
 

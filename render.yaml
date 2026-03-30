@@ -13,31 +13,8 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_HOST
-        fromService:
-          type: pserv
-          name: telecom-mysql
-          property: host
-      - key: DATABASE_PORT
-        fromService:
-          type: pserv
-          name: telecom-mysql
-          property: port
-      - key: DATABASE_NAME
-        fromService:
-          type: pserv
-          name: telecom-mysql
-          envVarKey: MYSQL_DATABASE
-      - key: DATABASE_USER
-        fromService:
-          type: pserv
-          name: telecom-mysql
-          envVarKey: MYSQL_USER
-      - key: DATABASE_PASSWORD
-        fromService:
-          type: pserv
-          name: telecom-mysql
-          envVarKey: MYSQL_PASSWORD
+      - key: DATABASE_URL
+        sync: false
       - key: REDIS_HOST
         fromService:
           type: keyvalue
@@ -64,25 +41,6 @@ services:
         value: "1"
       - key: UVICORN_FORWARDED_ALLOW_IPS
         value: "*"
-
-  - type: pserv
-    name: telecom-mysql
-    runtime: docker
-    dockerfilePath: ./docker/mysql/Dockerfile
-    dockerContext: ./docker/mysql
-    envVars:
-      - key: MYSQL_DATABASE
-        value: telecom_api
-      - key: MYSQL_USER
-        value: telecom_user
-      - key: MYSQL_PASSWORD
-        sync: false
-      - key: MYSQL_ROOT_PASSWORD
-        sync: false
-    disk:
-      name: mysql-data
-      mountPath: /var/lib/mysql
-      sizeGB: 10
 
   - type: keyvalue
     name: telecom-cache
