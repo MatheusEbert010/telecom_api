@@ -9,7 +9,7 @@ from ..cache import cache
 from ..crud import plan_repository, user_repository
 from ..security import hash_password
 
-PUBLIC_USER_CREATION_ERROR = "Nao foi possivel concluir o cadastro com os dados informados"
+USER_CREATION_ERROR = "Nao foi possivel concluir o cadastro com os dados informados"
 
 
 def _hash_password(password: str) -> str:
@@ -18,25 +18,30 @@ def _hash_password(password: str) -> str:
     return hashed_password.decode("utf-8") if isinstance(hashed_password, bytes) else hashed_password
 
 
-def create_user(db: Session, user: schemas.UserCreate):
-    """Cria um usuario comum com email unico e senha protegida por hash."""
+def create_user(db: Session, user: schemas.AdminUserCreate):
+    """Cria um usuario com email unico, senha protegida e papel definido pelo admin."""
     existing_user = user_repository.get_user_by_email(db, user.email)
     if existing_user:
-        raise HTTPException(status_code=400, detail=PUBLIC_USER_CREATION_ERROR)
+        raise HTTPException(status_code=400, detail=USER_CREATION_ERROR)
 
     user_data = {
         "name": user.name,
         "email": user.email,
         "phone": user.phone,
+        "street": user.street,
+        "neighborhood": user.neighborhood,
+        "address_number": user.address_number,
+        "address_complement": user.address_complement,
+        "cep": user.cep,
         "password": _hash_password(user.password),
-        "role": schemas.UserRole.USER.value,
+        "role": user.role.value,
     }
 
     try:
         created_user = user_repository.create_user(db, user_data)
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=400, detail=PUBLIC_USER_CREATION_ERROR) from exc
+        raise HTTPException(status_code=400, detail=USER_CREATION_ERROR) from exc
     cache.clear_pattern("users:list:*")
     return created_user
 
@@ -61,6 +66,11 @@ def ensure_admin_user(
     if existing_user:
         existing_user.name = validated_user.name
         existing_user.phone = validated_user.phone
+        existing_user.street = None
+        existing_user.neighborhood = None
+        existing_user.address_number = None
+        existing_user.address_complement = None
+        existing_user.cep = None
         existing_user.password = _hash_password(validated_user.password)
         existing_user.role = schemas.UserRole.ADMIN.value
         db.commit()
@@ -72,6 +82,11 @@ def ensure_admin_user(
         "name": validated_user.name,
         "email": validated_user.email,
         "phone": validated_user.phone,
+        "street": None,
+        "neighborhood": None,
+        "address_number": None,
+        "address_complement": None,
+        "cep": None,
         "password": _hash_password(validated_user.password),
         "role": schemas.UserRole.ADMIN.value,
     }
@@ -96,6 +111,24 @@ def update_user(db: Session, user_id: int, user_data: schemas.UserUpdate):
 
     if user_data.password:
         user.password = _hash_password(user_data.password)
+
+    db.commit()
+    db.refresh(user)
+    cache.clear_pattern("users:list:*")
+    return user
+
+
+def update_user_address(db: Session, user_id: int, payload: schemas.UserAddressUpdate):
+    """Atualiza o endereco persistido para um usuario existente."""
+    user = user_repository.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
+    user.street = payload.street
+    user.neighborhood = payload.neighborhood
+    user.address_number = payload.address_number
+    user.address_complement = payload.address_complement
+    user.cep = payload.cep
 
     db.commit()
     db.refresh(user)

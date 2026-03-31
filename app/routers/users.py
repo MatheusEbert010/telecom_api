@@ -14,8 +14,12 @@ router = APIRouter(prefix="/users", tags=["Usuarios"])
 
 
 @router.post("/", response_model=schemas.UserResponse, status_code=201)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    """Cadastra um novo usuario comum."""
+def create_user(
+    user: schemas.AdminUserCreate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Cadastra uma nova conta sob responsabilidade de um administrador."""
     return user_service.create_user(db, user)
 
 
@@ -83,6 +87,17 @@ def change_user_role(
 ):
     """Permite ao administrador alterar explicitamente o papel de um usuario."""
     return user_service.change_user_role(db, user_id, data.role)
+
+
+@router.patch("/{user_id}/address", response_model=schemas.UserResponse)
+def update_user_address(
+    data: schemas.UserAddressUpdate,
+    user_id: int = Path(..., gt=0),
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Permite ao administrador atualizar o endereco de qualquer conta."""
+    return user_service.update_user_address(db, user_id, data)
 
 
 @router.delete("/{user_id}", response_model=schemas.MessageResponse)

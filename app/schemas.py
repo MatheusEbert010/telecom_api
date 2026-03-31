@@ -77,7 +77,33 @@ class UserBase(StrictSchema):
         return value
 
 
-class UserCreate(UserBase):
+class AddressFields(StrictSchema):
+    """Campos opcionais de endereco associados a qualquer usuario."""
+
+    street: str | None = Field(None, min_length=3, max_length=150)
+    neighborhood: str | None = Field(None, min_length=2, max_length=100)
+    address_number: str | None = Field(None, min_length=1, max_length=20)
+    address_complement: str | None = Field(None, max_length=100)
+    cep: str | None = Field(None, max_length=20)
+
+    @field_validator(
+        "street",
+        "neighborhood",
+        "address_number",
+        "address_complement",
+        "cep",
+    )
+    @classmethod
+    def normalize_optional_address(cls, value: str | None) -> str | None:
+        """Remove espacos excedentes dos campos de endereco sem impor formato extra."""
+        if value is None:
+            return None
+
+        normalized = value.strip()
+        return normalized or None
+
+
+class UserCreate(UserBase, AddressFields):
     """Payload publico de cadastro de usuario."""
 
     password: str = Field(..., min_length=8, max_length=72)
@@ -87,6 +113,12 @@ class UserCreate(UserBase):
     def validate_password(cls, value: str) -> str:
         """Exige senha forte e bloqueia combinacoes muito comuns."""
         return _validate_password_strength(value)
+
+
+class AdminUserCreate(UserCreate):
+    """Payload de criacao de conta usado por administradores."""
+
+    role: UserRole = UserRole.USER
 
 
 class UserUpdate(UserBase):
@@ -102,6 +134,10 @@ class UserUpdate(UserBase):
             return value
 
         return _validate_password_strength(value)
+
+
+class UserAddressUpdate(AddressFields):
+    """Atualizacao dedicada de endereco restrita a administradores."""
 
 
 class UserRoleUpdate(StrictSchema):
@@ -138,6 +174,11 @@ class UserResponse(StrictSchema):
     name: str
     email: EmailStr
     phone: str | None
+    street: str | None
+    neighborhood: str | None
+    address_number: str | None
+    address_complement: str | None
+    cep: str | None
     role: UserRole
     plan_id: int | None
 

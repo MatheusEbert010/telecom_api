@@ -2,6 +2,7 @@ services:
   - type: web
     name: telecom-api
     runtime: docker
+    plan: free
     repo: https://github.com/MatheusEbert010/telecom_api.git
     branch: main
     autoDeployTrigger: checksPass
@@ -16,15 +17,9 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: REDIS_HOST
-        fromService:
-          type: keyvalue
-          name: telecom-cache
-          property: host
+        value: localhost
       - key: REDIS_PORT
-        fromService:
-          type: keyvalue
-          name: telecom-cache
-          property: port
+        value: "6379"
       - key: REDIS_DB
         value: "0"
       - key: CORS_ORIGINS
@@ -41,7 +36,3 @@ services:
         value: "1"
       - key: UVICORN_FORWARDED_ALLOW_IPS
         value: "*"
-
-  - type: keyvalue
-    name: telecom-cache
-    ipAllowList: []

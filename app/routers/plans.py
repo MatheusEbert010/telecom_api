@@ -56,3 +56,25 @@ def list_plans(
         sort_by=sort_by,
         sort_order=sort_order,
     )
+
+
+@router.delete("/{plan_id}", response_model=schemas.MessageResponse)
+def delete_plan(
+    plan_id: int,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Remove um plano e desfaz vinculos de usuarios associados."""
+    plan_service.delete_plan(db, plan_id)
+    return {"message": "Plano deletado com sucesso"}
+
+
+@router.put("/{plan_id}", response_model=schemas.PlanResponse)
+def update_plan(
+    plan_id: int,
+    plan: schemas.PlanCreate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Atualiza nome, preco e velocidade de um plano existente."""
+    return plan_service.update_plan(db, plan_id, plan)

@@ -29,3 +29,21 @@ def get_plan_by_name(db: Session, name: str):
     """Busca um plano ignorando diferencas entre maiusculas e minusculas."""
     normalized_name = name.strip().lower()
     return db.query(models.Plan).filter(func.lower(models.Plan.name) == normalized_name).first()
+
+
+def delete_plan(db: Session, plan: models.Plan):
+    """Remove um plano existente apos desvincular usuarios dependentes."""
+    db.query(models.User).filter(models.User.plan_id == plan.id).update({"plan_id": None})
+    db.delete(plan)
+    db.commit()
+    return plan
+
+
+def update_plan(db: Session, plan: models.Plan, payload: schemas.PlanCreate):
+    """Atualiza os atributos editaveis de um plano existente."""
+    plan.name = payload.name
+    plan.price = payload.price
+    plan.speed = payload.speed
+    db.commit()
+    db.refresh(plan)
+    return plan

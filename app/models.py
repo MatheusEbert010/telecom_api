@@ -26,6 +26,11 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     phone = Column(String(20))
+    street = Column(String(150))
+    neighborhood = Column(String(100))
+    address_number = Column(String(20))
+    address_complement = Column(String(100))
+    cep = Column(String(20))
     role = Column(String(20), default=UserRole.USER, nullable=False, index=True)
     # Mantem compatibilidade com colunas sem timezone explicito.
     created_at = Column(DateTime, default=utc_now_naive)

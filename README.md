@@ -459,8 +459,8 @@ Arquivos do proxy reverso:
 O projeto agora inclui um blueprint em [render.yaml](/c:/Users/MATHEUS-PC/telecom_api/render.yaml) para subir a stack principal no Render com:
 
 - uma `Web Service` publica para a API
-- uma instância `Key Value` para cache Redis/Valkey
-- o cache fica sem acesso externo e conversa com a API pela rede privada do Render
+- deploy em `plan: free` para reduzir o custo inicial
+- cache desabilitado por padrao no Render gratuito, usando o fallback seguro da aplicacao
 - conexao com MySQL externo via `DATABASE_URL`
 - `autoDeployTrigger: checksPass`, para deploy automatico somente depois que o CI do GitHub Actions passar
 
@@ -490,6 +490,7 @@ Em outras palavras: sim, isso ja e CD trabalhando em cima do seu CI atual.
 - para comecar o frontend, faz sentido expor a API publica no Render
 - para ambiente publico, defina `CORS_ORIGINS` com o dominio real do frontend, por exemplo `https://seu-frontend.vercel.app`
 - para MySQL externo, prefira fornecer a string completa em `DATABASE_URL`, porque isso simplifica host, porta, usuario, senha e parametros extras do provedor
+- no plano gratuito do Render, a aplicacao sobe sem Redis dedicado; o cache fica desabilitado automaticamente
 
 ### Recomendacao pratica
 
@@ -499,6 +500,7 @@ Para o seu momento atual, eu acho um bom caminho subir no Render sim, porque:
 - ja tem CI no GitHub Actions e isso conversa bem com `checksPass`
 - o frontend pode comecar a integrar num endpoint real
 - voce nao precisa administrar VPS, proxy reverso e SSL manualmente agora
+- o `render.yaml` foi ajustado para evitar custo inicial com Key Value e usar a `Web Service` gratuita
 
 O ponto de atencao fica na conectividade com o banco externo: alguns provedores exigem liberar faixas de IP de saida do Render ou configurar proxy de saida com IP fixo. Se o seu provedor exigir allowlist estrita, valide isso antes do primeiro deploy.
 

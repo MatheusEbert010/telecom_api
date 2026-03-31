@@ -22,6 +22,34 @@ def create_plan(db: Session, plan: schemas.PlanCreate):
     return created_plan
 
 
+def delete_plan(db: Session, plan_id: int):
+    """Remove um plano e limpa assinaturas que apontavam para ele."""
+    plan = plan_repository.get_plan_by_id(db, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plano nao encontrado")
+
+    deleted_plan = plan_repository.delete_plan(db, plan)
+    cache.clear_pattern("plans:list:*")
+    cache.clear_pattern("users:list:*")
+    return deleted_plan
+
+
+def update_plan(db: Session, plan_id: int, payload: schemas.PlanCreate):
+    """Atualiza um plano mantendo a regra de nome unico."""
+    plan = plan_repository.get_plan_by_id(db, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plano nao encontrado")
+
+    existing_plan = plan_repository.get_plan_by_name(db, payload.name)
+    if existing_plan and existing_plan.id != plan_id:
+        raise HTTPException(status_code=400, detail="Ja existe um plano com esse nome")
+
+    updated_plan = plan_repository.update_plan(db, plan, payload)
+    cache.clear_pattern("plans:list:*")
+    cache.clear_pattern("users:list:*")
+    return updated_plan
+
+
 def list_plans_advanced(
     db: Session,
     page: int = 1,
