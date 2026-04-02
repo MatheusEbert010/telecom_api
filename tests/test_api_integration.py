@@ -215,7 +215,7 @@ def test_admin_can_list_users_with_filters(client, admin_token, admin_user, regu
 
 
 def test_cors_allows_patch_preflight_for_role_update(client):
-    """Garante preflight valido para rotas PATCH usadas pelo frontend."""
+    """Garante preflight valido para consumidores web da API."""
     response = client.options(
         "/users/1/role",
         headers={
@@ -346,7 +346,7 @@ def test_invalid_plan_filter_range_returns_400(client):
 
 
 def test_validation_errors_return_code_and_error_list(client):
-    """Padroniza erros de validacao com codigo legivel pelo frontend."""
+    """Padroniza erros de validacao com codigo legivel para clientes da API."""
     response = client.post(
         "/users/",
         json={"name": "A", "email": "invalido", "phone": "123", "password": "fraca"},

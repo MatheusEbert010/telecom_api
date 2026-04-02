@@ -168,7 +168,3 @@ docker/secrets/*.key
 # Production
 .env.prod
 .env.production
-frontend/node_modules/
-frontend/.next/
-frontend/.vercel/
-frontend/.env.local

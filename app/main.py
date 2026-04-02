@@ -209,7 +209,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Traduz erros de validacao para um contrato estavel para o frontend."""
+    """Traduz erros de validacao para um contrato estavel de resposta da API."""
     return JSONResponse(
         status_code=422,
         content=build_error_payload(

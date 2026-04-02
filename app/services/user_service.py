@@ -18,11 +18,13 @@ def _hash_password(password: str) -> str:
     return hashed_password.decode("utf-8") if isinstance(hashed_password, bytes) else hashed_password
 
 
-def create_user(db: Session, user: schemas.AdminUserCreate):
-    """Cria um usuario com email unico, senha protegida e papel definido pelo admin."""
+def create_user(db: Session, user: schemas.UserCreate | schemas.AdminUserCreate):
+    """Cria um usuario com email unico, senha protegida e papel consistente."""
     existing_user = user_repository.get_user_by_email(db, user.email)
     if existing_user:
         raise HTTPException(status_code=400, detail=USER_CREATION_ERROR)
+
+    role = getattr(user, "role", schemas.UserRole.USER)
 
     user_data = {
         "name": user.name,
@@ -34,7 +36,7 @@ def create_user(db: Session, user: schemas.AdminUserCreate):
         "address_complement": user.address_complement,
         "cep": user.cep,
         "password": _hash_password(user.password),
-        "role": user.role.value,
+        "role": role.value,
     }
 
     try:

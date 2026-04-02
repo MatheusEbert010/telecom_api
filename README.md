@@ -200,7 +200,7 @@ O projeto passou a expor um prefixo estavel em `/api/v1`.
 
 ## Contrato de Erro
 
-Os erros da API agora seguem um formato mais consistente para facilitar consumo no frontend:
+Os erros da API agora seguem um formato mais consistente para facilitar consumo por clientes HTTP:
 
 ```json
 {
@@ -487,8 +487,7 @@ Em outras palavras: sim, isso ja e CD trabalhando em cima do seu CI atual.
 
 - o container da API agora respeita `PORT`, o que encaixa melhor no ambiente do Render
 - a API continua executando `alembic upgrade head` ao iniciar, o que ajuda no bootstrap inicial
-- para comecar o frontend, faz sentido expor a API publica no Render
-- para ambiente publico, defina `CORS_ORIGINS` com o dominio real do frontend, por exemplo `https://seu-frontend.vercel.app`
+- para clientes web publicos, defina `CORS_ORIGINS` com o dominio real autorizado
 - para MySQL externo, prefira fornecer a string completa em `DATABASE_URL`, porque isso simplifica host, porta, usuario, senha e parametros extras do provedor
 - no plano gratuito do Render, a aplicacao sobe sem Redis dedicado; o cache fica desabilitado automaticamente
 
@@ -498,7 +497,7 @@ Para o seu momento atual, eu acho um bom caminho subir no Render sim, porque:
 
 - voce consegue colocar a API publica rapido
 - ja tem CI no GitHub Actions e isso conversa bem com `checksPass`
-- o frontend pode comecar a integrar num endpoint real
+- clientes externos podem integrar num endpoint real
 - voce nao precisa administrar VPS, proxy reverso e SSL manualmente agora
 - o `render.yaml` foi ajustado para evitar custo inicial com Key Value e usar a `Web Service` gratuita
 
